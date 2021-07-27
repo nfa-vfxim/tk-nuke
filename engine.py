@@ -780,12 +780,15 @@ class NukeEngine(sgtk.platform.Engine):
             # have been deprecated in favour of Project.exportRootDirectory and
             # Project.setProjectDirectory.
             if nuke.env.get("NukeVersionMajor") >= 11 and not p.exportRootDirectory():
+                # Fix for Windows backslashes
+                projectPath = self.sgtk.project_path
+                projectPath = projectPath.replace('\\', '/')
                 self.logger.debug(
                     "Setting exportRootDirectory on %s to: %s",
                     p.name(),
-                    self.sgtk.project_path,
+                    projectPath,
                 )
-                p.setProjectDirectory(self.sgtk.project_path)
+                p.setProjectDirectory(projectPath)
             elif nuke.env.get("NukeVersionMajor") <= 10 and not p.projectRoot():
                 self.logger.debug(
                     "Setting projectRoot on %s to: %s", p.name(), self.sgtk.project_path
