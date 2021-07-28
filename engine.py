@@ -256,7 +256,7 @@ class NukeEngine(sgtk.platform.Engine):
         Called when all apps have initialized.
         """
         # Figure out what our menu will be named.
-        menu_name = "ShotGrid"
+        menu_name = "NFA ShotGrid"
         if self.get_setting("use_sgtk_as_menu_name", False):
             menu_name = "Sgtk"
 
