@@ -955,7 +955,7 @@ class NukeEngine(sgtk.platform.Engine):
         """
         engine_root_dir = self.disk_location
         sg_logo = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "filmacademie_sg_logo_80px.png")
+            os.path.join(engine_root_dir, "resources", "filmacademy_sg_logo_80px.png")
         )
 
         # Ensure old favorites we used to use are removed.
