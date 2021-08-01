@@ -41,10 +41,10 @@ class BaseMenuGenerator(object):
 
         engine_root_dir = self.engine.disk_location
         self._shotgun_logo = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "sg_logo_80px.png",),
+            os.path.join(engine_root_dir, "resources", "filmacademy_sg_logo_80px.png",),
         )
         self._shotgun_logo_blue = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "sg_logo_blue_32px.png",),
+            os.path.join(engine_root_dir, "resources", "filmacademy_logo_32px.png",),
         )
 
     @property
@@ -183,7 +183,8 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
         from sgtk.platform.qt import QtGui
 
-        self._menu_handle = QtGui.QMenu("ShotGrid")
+        # Adding menu name
+        self._menu_handle = QtGui.QMenu(self._menu_name)
         help = hiero.ui.findMenuAction("Cache")
         menuBar = hiero.ui.menuBar()
         menuBar.insertMenu(help, self._menu_handle)

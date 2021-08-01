@@ -256,7 +256,7 @@ class NukeEngine(sgtk.platform.Engine):
         Called when all apps have initialized.
         """
         # Figure out what our menu will be named.
-        menu_name = "ShotGrid"
+        menu_name = "NFA ShotGrid"
         if self.get_setting("use_sgtk_as_menu_name", False):
             menu_name = "Sgtk"
 
@@ -344,7 +344,7 @@ class NukeEngine(sgtk.platform.Engine):
                 "kAfterProjectLoad", self._on_project_load_callback,
             )
 
-    def post_app_init_nuke(self, menu_name="ShotGrid"):
+    def post_app_init_nuke(self, menu_name="NFA ShotGrid"):
         """
         The Nuke-specific portion of the engine's post-init process.
 
@@ -780,12 +780,15 @@ class NukeEngine(sgtk.platform.Engine):
             # have been deprecated in favour of Project.exportRootDirectory and
             # Project.setProjectDirectory.
             if nuke.env.get("NukeVersionMajor") >= 11 and not p.exportRootDirectory():
+                # Fix for Windows backslashes
+                projectPath = self.sgtk.project_path
+                projectPath = projectPath.replace('\\', '/')
                 self.logger.debug(
                     "Setting exportRootDirectory on %s to: %s",
                     p.name(),
-                    self.sgtk.project_path,
+                    projectPath,
                 )
-                p.setProjectDirectory(self.sgtk.project_path)
+                p.setProjectDirectory(projectPath)
             elif nuke.env.get("NukeVersionMajor") <= 10 and not p.projectRoot():
                 self.logger.debug(
                     "Setting projectRoot on %s to: %s", p.name(), self.sgtk.project_path
@@ -952,7 +955,7 @@ class NukeEngine(sgtk.platform.Engine):
         """
         engine_root_dir = self.disk_location
         sg_logo = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "sg_logo_80px.png")
+            os.path.join(engine_root_dir, "resources", "filmacademie_sg_logo_80px.png")
         )
 
         # Ensure old favorites we used to use are removed.
