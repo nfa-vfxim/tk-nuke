@@ -41,10 +41,10 @@ class BaseMenuGenerator(object):
 
         engine_root_dir = self.engine.disk_location
         self._shotgun_logo = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "filmacademie_sg_logo_80px.png",),
+            os.path.join(engine_root_dir, "resources", "filmacademy_sg_logo_80px.png",),
         )
         self._shotgun_logo_blue = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "filmacademie_logo_32px.png",),
+            os.path.join(engine_root_dir, "resources", "filmacademy_logo_32px.png",),
         )
 
     @property
