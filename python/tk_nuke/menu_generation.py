@@ -528,6 +528,7 @@ class NukeMenuGenerator(BaseMenuGenerator):
         """
         # Create main Shotgun menu.
         menu_handle = nuke.menu("Nuke").addMenu(self._menu_name)
+        iconPath=self._shotgun_logo
         node_menu_handle = nuke.menu("Nodes").addMenu(
             self._menu_name, icon=self._shotgun_logo
         )
@@ -578,6 +579,8 @@ class NukeMenuGenerator(BaseMenuGenerator):
             if cmd.type == "node":
                 # Get icon if specified - default to sgtk icon if not specified.
                 icon = cmd.properties.get("icon", self._shotgun_logo)
+                # Fix for Windows slashes
+                icon = icon.replace(os.sep, '/')
                 command_context = cmd.properties.get("context")
 
                 # If the app recorded a context that it wants the command to be associated
@@ -1003,6 +1006,8 @@ class NukeAppCommand(BaseAppCommand):
                         for the menu command.
         """
         icon = icon or self.properties.get("icon")
+        # Fix for Windows slashes
+        icon = icon.replace(os.sep, '/')
         hotkey = hotkey or self.properties.get("hotkey")
 
         # Now wrap the command callback in a wrapper (see above)
