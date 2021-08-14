@@ -471,6 +471,7 @@ class NukeStudioMenuGenerator(HieroMenuGenerator):
 
             # Get icon if specified - default to sgtk icon if not specified.
             icon = cmd.properties.get("icon", self._shotgun_logo)
+            icon = icon.replace(os.sep, '/')
             command_context = cmd.properties.get("context")
 
             # If the app recorded a context that it wants the command to be associated
@@ -528,7 +529,6 @@ class NukeMenuGenerator(BaseMenuGenerator):
         """
         # Create main Shotgun menu.
         menu_handle = nuke.menu("Nuke").addMenu(self._menu_name)
-        iconPath=self._shotgun_logo
         node_menu_handle = nuke.menu("Nodes").addMenu(
             self._menu_name, icon=self._shotgun_logo
         )
@@ -889,6 +889,7 @@ class HieroAppCommand(BaseAppCommand):
                         command.
         """
         icon = icon or self.properties.get("icon")
+        icon = icon.replace(os.sep, '/')
         action = menu.addAction(self.name)
         action.setEnabled(enabled)
         if icon:
@@ -993,6 +994,8 @@ class NukeAppCommand(BaseAppCommand):
         :param menu: The menu object to add the new item to.
         """
         icon = self.properties.get("icon")
+        # Fix for Windows slashes
+        icon = icon.replace(os.sep, '/')
         menu.addCommand(self.name, self._original_callback, icon=icon)
 
     def add_command_to_menu(self, menu, enabled=True, icon=None, hotkey=None):
