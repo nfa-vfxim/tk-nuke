@@ -471,6 +471,7 @@ class NukeStudioMenuGenerator(HieroMenuGenerator):
 
             # Get icon if specified - default to sgtk icon if not specified.
             icon = cmd.properties.get("icon", self._shotgun_logo)
+            icon = icon.replace(os.sep, '/')
             command_context = cmd.properties.get("context")
 
             # If the app recorded a context that it wants the command to be associated
@@ -578,6 +579,8 @@ class NukeMenuGenerator(BaseMenuGenerator):
             if cmd.type == "node":
                 # Get icon if specified - default to sgtk icon if not specified.
                 icon = cmd.properties.get("icon", self._shotgun_logo)
+                # Fix for Windows slashes
+                icon = icon.replace(os.sep, '/')
                 command_context = cmd.properties.get("context")
 
                 # If the app recorded a context that it wants the command to be associated
@@ -886,6 +889,7 @@ class HieroAppCommand(BaseAppCommand):
                         command.
         """
         icon = icon or self.properties.get("icon")
+        icon = icon.replace(os.sep, '/')
         action = menu.addAction(self.name)
         action.setEnabled(enabled)
         if icon:
@@ -990,6 +994,8 @@ class NukeAppCommand(BaseAppCommand):
         :param menu: The menu object to add the new item to.
         """
         icon = self.properties.get("icon")
+        # Fix for Windows slashes
+        icon = icon.replace(os.sep, '/')
         menu.addCommand(self.name, self._original_callback, icon=icon)
 
     def add_command_to_menu(self, menu, enabled=True, icon=None, hotkey=None):
@@ -1003,6 +1009,8 @@ class NukeAppCommand(BaseAppCommand):
                         for the menu command.
         """
         icon = icon or self.properties.get("icon")
+        # Fix for Windows slashes
+        icon = icon.replace(os.sep, '/')
         hotkey = hotkey or self.properties.get("hotkey")
 
         # Now wrap the command callback in a wrapper (see above)
