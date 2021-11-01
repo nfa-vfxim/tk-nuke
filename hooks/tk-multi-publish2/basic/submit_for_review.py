@@ -162,10 +162,8 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
         # Determine if item should be checked or not
         output_template = item.properties.get("work_template")
         output_fields = output_template.get_fields(path)
-        print(output_fields)
 
         render_name = output_fields.get("output")
-        print("Render name: %s" % str(render_name))
 
         checked_filenames = ("main", "output")
 
