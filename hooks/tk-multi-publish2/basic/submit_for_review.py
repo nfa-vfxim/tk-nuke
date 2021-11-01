@@ -164,10 +164,10 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
         output_fields = output_template.get_fields(path)
         print(output_fields)
 
-        render_name = output_fields.get('output')
+        render_name = output_fields.get("output")
         print("Render name: %s" % str(render_name))
 
-        checked_filenames = ('main', 'output')
+        checked_filenames = ("main", "output")
 
         if render_name in checked_filenames:
             checked = True
@@ -259,7 +259,7 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
             self.logger.info(
                 "Version uploaded for file: %s" % (render_path,),
                 extra={
-                    "action_show_in_ShotGrid": {
+                    "action_show_in_shotgun": {
                         "label": "Show Version",
                         "tooltip": "Reveal the version in ShotGrid.",
                         "entity": version,
