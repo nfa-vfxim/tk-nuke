@@ -1,12 +1,12 @@
-﻿# Copyright (c) 2017 Shotgun Software Inc.
+﻿# Copyright (c) 2017 ShotGrid Software Inc.
 #
 # CONFIDENTIAL AND PROPRIETARY
 #
-# This work is provided "AS IS" and subject to the Shotgun Pipeline Toolkit
+# This work is provided "AS IS" and subject to the ShotGrid Pipeline Toolkit
 # Source Code License included in this distribution package. See LICENSE.
 # By accessing, using, copying or modifying this work you indicate your
-# agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
-# not expressly granted therein are reserved by Shotgun Software Inc.
+# agreement to the ShotGrid Pipeline Toolkit Source Code License. All rights
+# not expressly granted therein are reserved by ShotGrid Software Inc.
 
 import nuke
 import os
@@ -15,9 +15,9 @@ import sgtk
 HookBaseClass = sgtk.get_hook_baseclass()
 
 
-class NukeSubmitForReviewPlugin(HookBaseClass):
+class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
     """
-    Plugin for submitting a review from Nuke into Shotgun.
+    Plugin for submitting a review from Nuke into ShotGrid.
 
     """
 
@@ -35,7 +35,7 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         """
         One line display name describing the plugin
         """
-        return "Submit for Review"
+        return "Submit for Review on Deadline"
 
     @property
     def description(self):
@@ -44,7 +44,7 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         contain simple html for formatting.
         """
 
-        review_url = "https://support.shotgunsoftware.com/hc/en-us/articles/114094032014-The-review-workflow"
+        review_url = "https://support.ShotGridsoftware.com/hc/en-us/articles/114094032014-The-review-workflow"
 
         return """<p>
         Submits a movie file to ShotGrid for review. An entry will be
@@ -122,18 +122,14 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         """
 
         accepted = True
-        review_submission_app = self.parent.engine.apps.get("tk-multi-reviewsubmission")
+        review_submission_app = self.parent.engine.apps.get(
+            "tk-multi-deadlinereviewsubmission"
+        )
         if review_submission_app is None:
             accepted = False
             self.logger.debug(
                 "Review submission app is not available. skipping item: %s"
                 % (item.properties["publish_name"],)
-            )
-        if item.properties.get("color_space") is None:
-            accepted = False
-            self.logger.debug(
-                "'color_space' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
             )
         if item.properties.get("first_frame") is None:
             accepted = False
@@ -148,6 +144,7 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
                 "Item will be skipped: %s." % (item.properties["publish_name"],)
             )
         path = item.properties.get("path")
+
         if path is None:
             accepted = False
             self.logger.debug(
@@ -161,7 +158,24 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
                 "Submit for review plugin accepted: %s" % (path,),
                 extra={"action_show_folder": {"path": path}},
             )
-        return {"accepted": accepted, "checked": True}
+
+        # Determine if item should be checked or not
+        output_template = item.properties.get("work_template")
+        output_fields = output_template.get_fields(path)
+        print(output_fields)
+
+        render_name = output_fields.get('output')
+        print("Render name: %s" % str(render_name))
+
+        checked_filenames = ('main', 'output')
+
+        if render_name in checked_filenames:
+            checked = True
+
+        else:
+            checked = False
+
+        return {"accepted": accepted, "checked": checked}
 
     def validate(self, settings, item):
         """
@@ -174,22 +188,6 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         :param item: Item to process
         :returns: True if item is valid and not in proxy mode, False otherwise.
         """
-
-        # the render task will always render full-res frames when publishing. If we're
-        # in proxy mode in Nuke, that task will fail since there will be no full-res
-        # frames rendered. The exceptions are if there is no proxy_render_template set
-        # in the tk-nuke-writenode app, then the write node app falls back on the
-        # full-res template. Or if they rendered in full res and then switched to
-        # proxy mode later. In this case, this is likely user error, so we catch it.
-        root_node = nuke.root()
-        proxy_mode_on = root_node["proxy"].value()
-        if proxy_mode_on:
-            error_msg = (
-                "You cannot publish to Screening Room while Nuke is in proxy "
-                + "mode. Please toggle proxy mode OFF and try again."
-            )
-            self.logger.error(error_msg)
-            raise Exception(error_msg)
 
         return True
 
@@ -212,11 +210,11 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
                 "Review Submission for '%s' failed. This property must "
                 "be set by a publish plugin that has run before this one." % render_path
             )
-        sg_task = self.parent.context.task
+
         comment = item.description
-        thumbnail_path = item.get_thumbnail_as_path()
-        progress_cb = lambda *args, **kwargs: None
-        review_submission_app = self.parent.engine.apps.get("tk-multi-reviewsubmission")
+        tk_multi_deadlinereviewsubmission = self.parent.engine.apps.get(
+            "tk-multi-deadlinereviewsubmission"
+        )
 
         render_template = item.properties.get("work_template")
         if render_template is None:
@@ -228,7 +226,7 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         if publish_template is None:
             raise Exception(
                 "'publish_template' property not found on item. "
-                "Review submission for '%' failed." % render_path
+                "Review submission for '%s' failed." % render_path
             )
         if not render_template.validate(render_path):
             raise Exception(
@@ -237,27 +235,31 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
             )
 
         render_path_fields = render_template.get_fields(render_path)
+
         first_frame = item.properties.get("first_frame")
         last_frame = item.properties.get("last_frame")
-        colorspace = item.properties.get("color_space")
+        fps = nuke.root().fps()
 
-        version = review_submission_app.render_and_submit_version(
+        filename = nuke.root().name()
+        filename = os.path.basename(filename)
+        filename = os.path.splitext(filename)[0]
+
+        version = tk_multi_deadlinereviewsubmission.submit_version(
             publish_template,
             render_path_fields,
+            [sg_publish_data],
             first_frame,
             last_frame,
-            [sg_publish_data],
-            sg_task,
+            fps,
+            filename,
             comment,
-            thumbnail_path,
-            progress_cb,
-            colorspace,
         )
+
         if version:
             self.logger.info(
                 "Version uploaded for file: %s" % (render_path,),
                 extra={
-                    "action_show_in_shotgun": {
+                    "action_show_in_ShotGrid": {
                         "label": "Show Version",
                         "tooltip": "Reveal the version in ShotGrid.",
                         "entity": version,
