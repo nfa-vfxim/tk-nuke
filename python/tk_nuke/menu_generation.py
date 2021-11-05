@@ -579,6 +579,10 @@ class NukeMenuGenerator(BaseMenuGenerator):
             if cmd.type == "node":
                 # Get icon if specified - default to sgtk icon if not specified.
                 icon = cmd.properties.get("icon", self._shotgun_logo)
+
+                # Get hotkey if specified
+                hotkey = cmd.properties.get("hotkey")
+
                 # Fix for Windows slashes
                 icon = icon.replace(os.sep, '/')
                 command_context = cmd.properties.get("context")
@@ -587,7 +591,10 @@ class NukeMenuGenerator(BaseMenuGenerator):
                 # with, we need to check it against the current engine context. If they
                 # don't match then we don't add it.
                 if command_context is None or command_context is self.engine.context:
-                    node_menu_handle.addCommand(cmd.name, cmd.callback, icon=icon)
+                    if hotkey:
+                        node_menu_handle.addCommand(cmd.name, cmd.callback, hotkey, icon=icon)
+                    else:
+                        node_menu_handle.addCommand(cmd.name, cmd.callback, icon=icon)
             elif cmd.type == "context_menu":
                 cmd.add_command_to_menu(self._context_menu)
             else:

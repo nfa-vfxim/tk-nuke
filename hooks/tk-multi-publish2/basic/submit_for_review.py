@@ -165,13 +165,15 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
 
         render_name = output_fields.get("output")
 
-        checked_filenames = ("main", "output")
+        checked_filenames = ("main",)
 
         if render_name in checked_filenames:
             checked = True
+            accepted = True
 
         else:
             checked = False
+            accepted = False
 
         return {"accepted": accepted, "checked": checked}
 
@@ -202,6 +204,7 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
         render_path = item.properties.get("path")
 
         sg_publish_data = item.properties.get("sg_publish_data")
+        print(sg_publish_data)
         if sg_publish_data is None:
             raise Exception(
                 "'sg_publish_data' was not found in the item's properties. "
