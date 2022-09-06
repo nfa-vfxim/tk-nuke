@@ -172,18 +172,29 @@ class NukeEngine(sgtk.platform.Engine):
         if nuke_version[0] < 7:
             self.logger.error(msg)
             return
-        elif nuke_version[0] == 7 and nuke_version[1] == 0 and nuke_version[2] < 10:
+        elif (
+            nuke_version[0] == 7
+            and nuke_version[1] == 0
+            and nuke_version[2] < 10
+        ):
             self.logger.error(msg)
             return
 
         # Versions > 13.1 have not yet been tested so show a message to that effect.
-        if nuke_version[0] > 13 or (nuke_version[0] == 13 and nuke_version[1] > 1):
+        if nuke_version[0] > 13 or (
+            nuke_version[0] == 13 and nuke_version[1] > 2
+        ):
             # This is an untested version of Nuke.
             msg = (
                 "The SG Pipeline Toolkit has not yet been fully tested with Nuke %d.%dv%d. "
                 "You can continue to use the Toolkit but you may experience bugs or "
                 "instability.  Please report any issues to our support team via %s"
-                % (nuke_version[0], nuke_version[1], nuke_version[2], sgtk.support_url)
+                % (
+                    nuke_version[0],
+                    nuke_version[1],
+                    nuke_version[2],
+                    sgtk.support_url,
+                )
             )
 
             # Show nuke message if in UI mode, this is the first time the engine has been started
@@ -206,7 +217,9 @@ class NukeEngine(sgtk.platform.Engine):
             self.logger.error("The Nuke Engine does not work with Nuke PLE!")
             return
         elif nuke.env.get("nc"):
-            self.logger.error("The Nuke Engine does not work with Nuke Non-Commercial!")
+            self.logger.error(
+                "The Nuke Engine does not work with Nuke Non-Commercial!"
+            )
             return
 
         # Now check that we are at least in a project context. Note that plugin mode
@@ -289,28 +302,37 @@ class NukeEngine(sgtk.platform.Engine):
             from hiero.core import env as hiero_env
 
             # Create the menu!
-            self._menu_generator = tk_nuke.NukeStudioMenuGenerator(self, menu_name)
+            self._menu_generator = tk_nuke.NukeStudioMenuGenerator(
+                self, menu_name
+            )
             self._menu_generator.create_menu()
 
             # No context switching in plugin mode.
             if self.in_plugin_mode:
-                self._context_switcher = tk_nuke.PluginStudioContextSwitcher(self)
+                self._context_switcher = tk_nuke.PluginStudioContextSwitcher(
+                    self
+                )
             else:
                 hiero.core.events.registerInterest(
-                    "kAfterNewProjectCreated", self.set_project_root,
+                    "kAfterNewProjectCreated",
+                    self.set_project_root,
                 )
 
                 hiero.core.events.registerInterest(
-                    "kAfterProjectLoad", self._on_project_load_callback,
+                    "kAfterProjectLoad",
+                    self._on_project_load_callback,
                 )
 
-                self._context_switcher = tk_nuke.ClassicStudioContextSwitcher(self)
+                self._context_switcher = tk_nuke.ClassicStudioContextSwitcher(
+                    self
+                )
                 # On selection change we have to check what was selected and pre-load
                 # the context if that environment (ie: shot_step) hasn't already been
                 # processed. This ensure that all Nuke gizmos for the target environment
                 # will be available.
                 hiero.core.events.registerInterest(
-                    "kSelectionChanged", self._handle_studio_selection_change,
+                    "kSelectionChanged",
+                    self._handle_studio_selection_change,
                 )
 
     def log_user_attribute_metric(self, name, value):
@@ -337,11 +359,13 @@ class NukeEngine(sgtk.platform.Engine):
             self._menu_generator.create_menu()
 
             hiero.core.events.registerInterest(
-                "kAfterNewProjectCreated", self.set_project_root,
+                "kAfterNewProjectCreated",
+                self.set_project_root,
             )
 
             hiero.core.events.registerInterest(
-                "kAfterProjectLoad", self._on_project_load_callback,
+                "kAfterProjectLoad",
+                self._on_project_load_callback,
             )
 
     def post_app_init_nuke(self, menu_name="NFA ShotGrid"):
@@ -377,7 +401,8 @@ class NukeEngine(sgtk.platform.Engine):
             # the one it needs and then run the callback.
             for (panel_id, panel_dict) in self.panels.items():
                 nukescripts.panels.registerPanel(
-                    panel_id, panel_dict["callback"],
+                    panel_id,
+                    panel_dict["callback"],
                 )
 
         # Iterate over all apps, if there is a gizmo folder, add it to nuke path.
@@ -398,7 +423,9 @@ class NukeEngine(sgtk.platform.Engine):
                 sgtk.util.append_path_to_env_var("NUKE_PATH", app_gizmo_folder)
 
         # Nuke Studio 9 really doesn't like us running commands at startup, so don't.
-        if not (nuke.env.get("NukeVersionMajor") == 9 and nuke.env.get("studio")):
+        if not (
+            nuke.env.get("NukeVersionMajor") == 9 and nuke.env.get("studio")
+        ):
             self._run_commands_at_startup()
 
     @property
@@ -484,7 +511,10 @@ class NukeEngine(sgtk.platform.Engine):
             else:
                 if not setting_command_name:
                     # Run all commands of the given app instance.
-                    for (command_name, command_function) in command_dict.items():
+                    for (
+                        command_name,
+                        command_function,
+                    ) in command_dict.items():
                         self.logger.debug(
                             "%s startup running app '%s' command '%s'.",
                             self.name,
@@ -555,15 +585,18 @@ class NukeEngine(sgtk.platform.Engine):
             import hiero.core
 
             hiero.core.events.unregisterInterest(
-                "kAfterNewProjectCreated", self.set_project_root,
+                "kAfterNewProjectCreated",
+                self.set_project_root,
             )
             hiero.core.events.unregisterInterest(
-                "kAfterProjectLoad", self._on_project_load_callback,
+                "kAfterProjectLoad",
+                self._on_project_load_callback,
             )
 
             if self.studio_enabled:
                 hiero.core.events.unregisterInterest(
-                    "kSelectionChanged", self._handle_studio_selection_change,
+                    "kSelectionChanged",
+                    self._handle_studio_selection_change,
                 )
 
     def post_context_change(self, old_context, new_context):
@@ -634,7 +667,9 @@ class NukeEngine(sgtk.platform.Engine):
     #####################################################################################
     # Panel Support
 
-    def show_panel(self, panel_id, title, bundle, widget_class, *args, **kwargs):
+    def show_panel(
+        self, panel_id, title, bundle, widget_class, *args, **kwargs
+    ):
         """
         Shows a panel in Nuke. If the panel already exists, the previous panel is swapped out
         and replaced with a new one. In this case, the contents of the panel (e.g. the toolkit app)
@@ -657,7 +692,9 @@ class NukeEngine(sgtk.platform.Engine):
             self.logger.info(
                 "Panels are not supported in Hiero. Launching as a dialog..."
             )
-            return self.show_dialog(title, bundle, widget_class, *args, **kwargs)
+            return self.show_dialog(
+                title, bundle, widget_class, *args, **kwargs
+            )
 
         # Note! Not using the import_module call as this confuses nuke's callback system
         import tk_nuke_qt
@@ -667,7 +704,9 @@ class NukeEngine(sgtk.platform.Engine):
             bundle, title, panel_id, widget_class, *args, **kwargs
         )
 
-        self.logger.debug("Showing pane %s - %s from %s", panel_id, title, bundle.name)
+        self.logger.debug(
+            "Showing pane %s - %s from %s", panel_id, title, bundle.name
+        )
 
         if hasattr(sgtk, "_callback_from_non_pane_menu"):
             self.logger.debug("Looking for a pane.")
@@ -692,7 +731,9 @@ class NukeEngine(sgtk.platform.Engine):
 
             existing_pane = None
             for tab_name in built_in_tabs:
-                self.logger.debug("Parenting panel - looking for %s tab...", tab_name)
+                self.logger.debug(
+                    "Parenting panel - looking for %s tab...", tab_name
+                )
                 existing_pane = nuke.getPaneFor(tab_name)
                 if existing_pane:
                     break
@@ -779,19 +820,26 @@ class NukeEngine(sgtk.platform.Engine):
             # In Nuke 11 and greater the Project.projectRoot and Project.setProjectRoot methods
             # have been deprecated in favour of Project.exportRootDirectory and
             # Project.setProjectDirectory.
-            if nuke.env.get("NukeVersionMajor") >= 11 and not p.exportRootDirectory():
+            if (
+                nuke.env.get("NukeVersionMajor") >= 11
+                and not p.exportRootDirectory()
+            ):
                 # Fix for Windows backslashes
                 projectPath = self.sgtk.project_path
-                projectPath = projectPath.replace('\\', '/')
+                projectPath = projectPath.replace("\\", "/")
                 self.logger.debug(
                     "Setting exportRootDirectory on %s to: %s",
                     p.name(),
                     projectPath,
                 )
                 p.setProjectDirectory(projectPath)
-            elif nuke.env.get("NukeVersionMajor") <= 10 and not p.projectRoot():
+            elif (
+                nuke.env.get("NukeVersionMajor") <= 10 and not p.projectRoot()
+            ):
                 self.logger.debug(
-                    "Setting projectRoot on %s to: %s", p.name(), self.sgtk.project_path
+                    "Setting projectRoot on %s to: %s",
+                    p.name(),
+                    self.sgtk.project_path,
                 )
                 p.setProjectRoot(self.sgtk.project_path)
 
@@ -837,14 +885,15 @@ class NukeEngine(sgtk.platform.Engine):
 
                     # If we've already seen this file selected before, or if it's
                     # not a .nk file, then we don't need to do anything.
-                    if file_path not in self._processed_paths and file_path.endswith(
-                        ".nk"
+                    if (
+                        file_path not in self._processed_paths
+                        and file_path.endswith(".nk")
                     ):
                         self._processed_paths.append(file_path)
                         self._context_change_menu_rebuild = False
                         current_context = self.context
-                        target_context = self._context_switcher.get_new_context(
-                            file_path
+                        target_context = (
+                            self._context_switcher.get_new_context(file_path)
                         )
 
                         if target_context:
@@ -859,7 +908,9 @@ class NukeEngine(sgtk.platform.Engine):
 
                             if env_name not in self._processed_environments:
                                 self._processed_environments.append(env_name)
-                                self._context_switcher.change_context(target_context)
+                                self._context_switcher.change_context(
+                                    target_context
+                                )
         except Exception as e:
             # If anything went wrong, we can just let the finally block
             # run, which will put things back to the way they were.
@@ -900,13 +951,16 @@ class NukeEngine(sgtk.platform.Engine):
             # Extract a new context based on the file and change to that
             # context.
             new_context = tk.context_from_path(
-                script_path, previous_context=self.context,
+                script_path,
+                previous_context=self.context,
             )
 
             if new_context != self.context:
                 sgtk.platform.change_context(new_context)
         except Exception:
-            self.logger.debug("Unable to determine context for file: %s", script_path)
+            self.logger.debug(
+                "Unable to determine context for file: %s", script_path
+            )
 
     def _define_qt_base(self):
         """
@@ -955,11 +1009,19 @@ class NukeEngine(sgtk.platform.Engine):
         """
         engine_root_dir = self.disk_location
         sg_logo = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "filmacademy_sg_logo_80px.png")
+            os.path.join(
+                engine_root_dir, "resources", "filmacademy_sg_logo_80px.png"
+            )
         )
 
         # Ensure old favorites we used to use are removed.
-        supported_entity_types = ["Shot", "Sequence", "Scene", "Asset", "Project"]
+        supported_entity_types = [
+            "Shot",
+            "Sequence",
+            "Scene",
+            "Asset",
+            "Project",
+        ]
         for x in supported_entity_types:
             nuke.removeFavoriteDir("Tank Current %s" % x)
         nuke.removeFavoriteDir("Tank Current Work")
@@ -995,7 +1057,9 @@ class NukeEngine(sgtk.platform.Engine):
             # Remove old directory
             nuke.removeFavoriteDir(favorite["display_name"])
             try:
-                template = self.get_template_by_name(favorite["template_directory"])
+                template = self.get_template_by_name(
+                    favorite["template_directory"]
+                )
                 fields = self.context.as_template_fields(template)
                 path = template.apply_fields(fields)
             except Exception as e:

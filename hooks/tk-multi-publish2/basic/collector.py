@@ -93,7 +93,9 @@ class NukeSessionCollector(HookBaseClass):
         else:
             # running nuke. ensure additional collected outputs are parented
             # under the session
-            project_item = self.collect_current_nuke_session(settings, parent_item)
+            project_item = self.collect_current_nuke_session(
+                settings, parent_item
+            )
 
         # run node collection if not in hiero
         if hasattr(engine, "hiero_enabled") and not engine.hiero_enabled:
@@ -127,7 +129,9 @@ class NukeSessionCollector(HookBaseClass):
         )
 
         # get the icon path to display for this item
-        icon_path = os.path.join(self.disk_location, os.pardir, "icons", "nuke.png")
+        icon_path = os.path.join(
+            self.disk_location, os.pardir, "icons", "nuke.png"
+        )
         session_item.set_icon_from_path(icon_path)
 
         # if a work template is defined, add it to the item properties so
@@ -194,7 +198,9 @@ class NukeSessionCollector(HookBaseClass):
             if not active_project:
                 return
             project_item = parent_item.create_item(
-                "nukestudio.project", "NukeStudio Project", active_project.name()
+                "nukestudio.project",
+                "NukeStudio Project",
+                active_project.name(),
             )
             self.logger.info(
                 "Collected Nuke Studio project: %s" % (active_project.name(),)
@@ -202,7 +208,9 @@ class NukeSessionCollector(HookBaseClass):
             project_item.set_icon_from_path(icon_path)
             project_item.properties["project"] = active_project
             project_item.properties["work_template"] = work_template
-            self.logger.debug("Work template defined for NukeStudio collection.")
+            self.logger.debug(
+                "Work template defined for NukeStudio collection."
+            )
             return
         # FIXME: end temporary workaround
 
@@ -218,7 +226,9 @@ class NukeSessionCollector(HookBaseClass):
             # plugins know which open project to associate with this item
             project_item.properties["project"] = project
 
-            self.logger.info("Collected Nuke Studio project: %s" % (project.name(),))
+            self.logger.info(
+                "Collected Nuke Studio project: %s" % (project.name(),)
+            )
 
             # enable the active project and expand it. other projects are
             # collapsed and disabled.
@@ -238,7 +248,9 @@ class NukeSessionCollector(HookBaseClass):
             # execution time.
             if work_template:
                 project_item.properties["work_template"] = work_template
-                self.logger.debug("Work template defined for NukeStudio collection.")
+                self.logger.debug(
+                    "Work template defined for NukeStudio collection."
+                )
 
     def collect_node_outputs(self, parent_item):
         """
@@ -252,7 +264,9 @@ class NukeSessionCollector(HookBaseClass):
         for node_type in _NUKE_OUTPUTS:
 
             # get all the instances of the node type
-            all_nodes_of_type = [n for n in nuke.allNodes() if n.Class() == node_type]
+            all_nodes_of_type = [
+                n for n in nuke.allNodes() if n.Class() == node_type
+            ]
 
             # iterate over each instance
             for node in all_nodes_of_type:
@@ -267,7 +281,9 @@ class NukeSessionCollector(HookBaseClass):
                     # no file or file does not exist, nothing to do
                     continue
 
-                self.logger.info("Processing %s node: %s" % (node_type, node.name()))
+                self.logger.info(
+                    "Processing %s node: %s" % (node_type, node.name())
+                )
 
                 # file exists, let the basic collector handle it
                 item = super(NukeSessionCollector, self)._collect_file(
@@ -307,38 +323,56 @@ class NukeSessionCollector(HookBaseClass):
             if render_path:
                 is_published = sg_writenode_app.get_published_status(node)
                 if not is_published:
-                    item_info = super(NukeSessionCollector, self)._get_item_info(render_path)
+                    item_info = super(
+                        NukeSessionCollector, self
+                    )._get_item_info(render_path)
 
                     item_type = "%s.sequence" % (item_info["item_type"],)
                     type_display = "%s Sequence" % (item_info["type_display"],)
 
                     # construct publish name:
-                    render_template = sg_writenode_app.get_node_render_template(node)
-                    render_path_fields = render_template.get_fields(render_path)
+                    render_template = (
+                        sg_writenode_app.get_node_render_template(node)
+                    )
+                    render_path_fields = render_template.get_fields(
+                        render_path
+                    )
 
                     output_name = render_path_fields.get("output")
 
                     render_directory = os.path.dirname(render_path)
-                    image_sequences = publisher.util.get_frame_sequences(render_directory)
+                    image_sequences = publisher.util.get_frame_sequences(
+                        render_directory
+                    )
                     for image_sequence in image_sequences:
-                        if image_sequence[0].replace(os.sep, '/') == render_path:
+                        if (
+                            image_sequence[0].replace(os.sep, "/")
+                            == render_path
+                        ):
 
                             sequence_files = []
                             for file in image_sequence[1]:
-                                file = file.replace(os.sep, '/')
+                                file = file.replace(os.sep, "/")
                                 sequence_files.append(file)
 
                             # get the version number from the render path
                             version_number = render_path_fields.get("version")
 
                             # use the path basename and nuke writenode name for display
-                            display_name = "%s (%s)" % (output_name, node.name())
+                            display_name = "%s (%s)" % (
+                                output_name,
+                                node.name(),
+                            )
 
                             # Set publish name
-                            publish_name = publisher.util.get_publish_name(render_path)
+                            publish_name = publisher.util.get_publish_name(
+                                render_path
+                            )
 
                             # create and populate the item
-                            item = parent_item.create_item(item_type, type_display, display_name)
+                            item = parent_item.create_item(
+                                item_type, type_display, display_name
+                            )
                             item.set_icon_from_path(item_info["icon_path"])
 
                             # if the supplied path is an image, use the path as # the thumbnail.
@@ -351,9 +385,17 @@ class NukeSessionCollector(HookBaseClass):
                             item.properties["sequence_paths"] = sequence_files
                             item.properties["publish_name"] = publish_name
                             item.properties["publish_version"] = version_number
-                            item.properties["publish_template"] = sg_writenode_app.get_node_publish_template(node)
-                            item.properties["work_template"] = sg_writenode_app.get_node_render_template(node)
-                            item.properties["color_space"] = sg_writenode_app.get_colorspace(node)
+                            item.properties[
+                                "publish_template"
+                            ] = sg_writenode_app.get_node_publish_template(
+                                node
+                            )
+                            item.properties[
+                                "work_template"
+                            ] = sg_writenode_app.get_node_render_template(node)
+                            item.properties[
+                                "colorspace"
+                            ] = sg_writenode_app.get_colorspace(node)
                             item.properties["first_frame"] = first_frame
                             item.properties["last_frame"] = last_frame
                             item.properties["sg_writenode"] = node
@@ -363,7 +405,9 @@ class NukeSessionCollector(HookBaseClass):
                             # switching natively.
                             item.context_change_allowed = False
 
-                            self.logger.info("Collected file: %s" % (render_path,))
+                            self.logger.info(
+                                "Collected file: %s" % (render_path,)
+                            )
 
     def _get_node_colorspace(self, node):
         """

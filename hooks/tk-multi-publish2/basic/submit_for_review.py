@@ -28,7 +28,9 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
         """
 
         # look for icon one level up from this hook's folder in "icons" folder
-        return os.path.join(self.disk_location, os.pardir, "icons", "review.png")
+        return os.path.join(
+            self.disk_location, os.pardir, "icons", "review.png"
+        )
 
     @property
     def name(self):
@@ -135,13 +137,15 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
             accepted = False
             self.logger.debug(
                 "'first_frame' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
+                "Item will be skipped: %s."
+                % (item.properties["publish_name"],)
             )
         if item.properties.get("last_frame") is None:
             accepted = False
             self.logger.debug(
                 "'last_frame' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
+                "Item will be skipped: %s."
+                % (item.properties["publish_name"],)
             )
         path = item.properties.get("path")
 
@@ -149,7 +153,8 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
             accepted = False
             self.logger.debug(
                 "'path' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
+                "Item will be skipped: %s."
+                % (item.properties["publish_name"],)
             )
 
         if accepted:
@@ -209,10 +214,10 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
             raise Exception(
                 "'sg_publish_data' was not found in the item's properties. "
                 "Review Submission for '%s' failed. This property must "
-                "be set by a publish plugin that has run before this one." % render_path
+                "be set by a publish plugin that has run before this one."
+                % render_path
             )
 
-        comment = item.description
         tk_multi_deadlinereviewsubmission = self.parent.engine.apps.get(
             "tk-multi-deadlinereviewsubmission"
         )
@@ -241,19 +246,16 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
         last_frame = item.properties.get("last_frame")
         fps = nuke.root().fps()
 
-        filename = nuke.root().name()
-        filename = os.path.basename(filename)
-        filename = os.path.splitext(filename)[0]
+        colorspace = item.properties.get("colorspace")
 
         version = tk_multi_deadlinereviewsubmission.submit_version(
-            publish_template,
-            render_path_fields,
-            [sg_publish_data],
-            first_frame,
-            last_frame,
-            fps,
-            filename,
-            comment,
+            template=publish_template,
+            fields=render_path_fields,
+            publish=sg_publish_data,
+            first_frame=first_frame,
+            last_frame=last_frame,
+            fps=fps,
+            colorspace_idt=colorspace,
         )
 
         if version:
