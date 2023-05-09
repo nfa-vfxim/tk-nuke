@@ -11,7 +11,6 @@
 from __future__ import print_function
 import sgtk
 import nuke
-import sys
 import os
 import nukescripts
 import logging
@@ -180,10 +179,8 @@ class NukeEngine(sgtk.platform.Engine):
             self.logger.error(msg)
             return
 
-        # Versions > 13.1 have not yet been tested so show a message to that effect.
-        if nuke_version[0] > 13 or (
-            nuke_version[0] == 13 and nuke_version[1] > 2
-        ):
+        # Versions > 14.0 have not yet been tested so show a message to that effect.
+        if nuke_version[0] > 14 or (nuke_version[0] == 14 and nuke_version[1] > 0):
             # This is an untested version of Nuke.
             msg = (
                 "The SG Pipeline Toolkit has not yet been fully tested with Nuke %d.%dv%d. "
@@ -264,6 +261,83 @@ class NukeEngine(sgtk.platform.Engine):
         os.environ["TANK_ENGINE"] = self.instance_name
         os.environ["TANK_CONTEXT"] = sgtk.context.serialize(self.context)
 
+        """
+        https://jira.autodesk.com/browse/SG-25374
+        Weblogin does not show up in Nuke 11 and makes Nuke 12 and 13 to crash
+
+        To avoid Nuke crash, a monkeypatch of on_dialog_closed is required,
+        here the user is warned about restarted nuke is needed to continue.
+        """
+        sgtk.authentication.sso_saml2.core.sso_saml2_core.SsoSaml2Core.on_dialog_closed = (
+            self._on_dialog_closed_monkeypatch
+        )
+
+    @staticmethod
+    def _on_dialog_closed_monkeypatch(self, result):
+        """
+        Called whenever the dialog is dismissed.
+
+        This can be the result of a callback, a timeout or user interaction.
+
+        :param result: Qt result following the closing of the dialog.
+                       QtGui.QDialog.Accepted or QtGui.QDialog.Rejected
+        """
+        self._logger.debug("SSO dialog closed")
+        # pylint: disable=invalid-name
+        QtGui = self._QtGui  # noqa
+
+        if self.is_handling_event():
+            if result == QtGui.QDialog.Rejected and self._session.cookies != "":
+                # We got here because of a timeout attempting a GUI-less login.
+                # Let's clear the cookies, and force the use of the GUI.
+                self._session.cookies = ""
+                # Let's have another go, without any cookies this time !
+                # This will force the GUI to be shown to the user.
+                self._logger.debug(
+                    "Unable to login/renew claims automatically, presenting GUI "
+                    "to user"
+                )
+                """
+                https://jira.autodesk.com/browse/SG-25374
+                Weblogin does not show up in Nuke 11 and makes Nuke 12 and
+                13 to crash
+                """
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+
+                msgbox_icon = os.path.join(base_dir, "resources", "alert_icon.png")
+                msgbox_parent = self._dialog
+                msgbox_title = "Nuke"
+                msgbox_text = [
+                    "The ShotGrid user session has expired.",
+                    "To continue using ShotGrid in Nuke, please restart Nuke.",
+                ]
+                msgbox_buttons = self._QtGui.QMessageBox.Ok
+
+                msgbox = self._QtGui.QMessageBox(msgbox_parent)
+                msgbox.setWindowTitle(msgbox_title)
+                msgbox.setText("\n\n".join(msgbox_text))
+                msgbox.setStandardButtons(msgbox_buttons)
+                msgbox.setIconPixmap(self._QtGui.QPixmap(msgbox_icon))
+                msgbox.activateWindow()  # for Windows
+                msgbox.raise_()  # for MacOS
+                msgbox.exec_()
+
+                status = QtGui.QDialog.Rejected
+                self._logger.warn("Skipping web login dialog for Nuke DCC.")
+                self._login_status = self._login_status or status
+            else:
+                self.resolve_event()
+        else:
+            # Should we get a rejected dialog, then we have had a timeout.
+            if result == QtGui.QDialog.Rejected:
+                # @FIXME: Figure out exactly what to do when we have a timeout.
+                self._logger.warn(
+                    "Our QDialog got canceled outside of an event handling"
+                )
+
+        # Clear the web page
+        self._view.page().mainFrame().load("about:blank")
+
     def post_app_init(self):
         """
         Called when all apps have initialized.
@@ -309,9 +383,7 @@ class NukeEngine(sgtk.platform.Engine):
 
             # No context switching in plugin mode.
             if self.in_plugin_mode:
-                self._context_switcher = tk_nuke.PluginStudioContextSwitcher(
-                    self
-                )
+                self._context_switcher = tk_nuke.PluginStudioContextSwitcher(self)
             else:
                 hiero.core.events.registerInterest(
                     "kAfterNewProjectCreated",
@@ -323,9 +395,7 @@ class NukeEngine(sgtk.platform.Engine):
                     self._on_project_load_callback,
                 )
 
-                self._context_switcher = tk_nuke.ClassicStudioContextSwitcher(
-                    self
-                )
+                self._context_switcher = tk_nuke.ClassicStudioContextSwitcher(self)
                 # On selection change we have to check what was selected and pre-load
                 # the context if that environment (ie: shot_step) hasn't already been
                 # processed. This ensure that all Nuke gizmos for the target environment
@@ -423,9 +493,7 @@ class NukeEngine(sgtk.platform.Engine):
                 sgtk.util.append_path_to_env_var("NUKE_PATH", app_gizmo_folder)
 
         # Nuke Studio 9 really doesn't like us running commands at startup, so don't.
-        if not (
-            nuke.env.get("NukeVersionMajor") == 9 and nuke.env.get("studio")
-        ):
+        if not (nuke.env.get("NukeVersionMajor") == 9 and nuke.env.get("studio")):
             self._run_commands_at_startup()
 
     @property
@@ -511,10 +579,7 @@ class NukeEngine(sgtk.platform.Engine):
             else:
                 if not setting_command_name:
                     # Run all commands of the given app instance.
-                    for (
-                        command_name,
-                        command_function,
-                    ) in command_dict.items():
+                    for (command_name, command_function) in command_dict.items():
                         self.logger.debug(
                             "%s startup running app '%s' command '%s'.",
                             self.name,
@@ -667,9 +732,7 @@ class NukeEngine(sgtk.platform.Engine):
     #####################################################################################
     # Panel Support
 
-    def show_panel(
-        self, panel_id, title, bundle, widget_class, *args, **kwargs
-    ):
+    def show_panel(self, panel_id, title, bundle, widget_class, *args, **kwargs):
         """
         Shows a panel in Nuke. If the panel already exists, the previous panel is swapped out
         and replaced with a new one. In this case, the contents of the panel (e.g. the toolkit app)
@@ -692,9 +755,7 @@ class NukeEngine(sgtk.platform.Engine):
             self.logger.info(
                 "Panels are not supported in Hiero. Launching as a dialog..."
             )
-            return self.show_dialog(
-                title, bundle, widget_class, *args, **kwargs
-            )
+            return self.show_dialog(title, bundle, widget_class, *args, **kwargs)
 
         # Note! Not using the import_module call as this confuses nuke's callback system
         import tk_nuke_qt
@@ -704,9 +765,7 @@ class NukeEngine(sgtk.platform.Engine):
             bundle, title, panel_id, widget_class, *args, **kwargs
         )
 
-        self.logger.debug(
-            "Showing pane %s - %s from %s", panel_id, title, bundle.name
-        )
+        self.logger.debug("Showing pane %s - %s from %s", panel_id, title, bundle.name)
 
         if hasattr(sgtk, "_callback_from_non_pane_menu"):
             self.logger.debug("Looking for a pane.")
@@ -731,9 +790,7 @@ class NukeEngine(sgtk.platform.Engine):
 
             existing_pane = None
             for tab_name in built_in_tabs:
-                self.logger.debug(
-                    "Parenting panel - looking for %s tab...", tab_name
-                )
+                self.logger.debug("Parenting panel - looking for %s tab...", tab_name)
                 existing_pane = nuke.getPaneFor(tab_name)
                 if existing_pane:
                     break
@@ -885,15 +942,14 @@ class NukeEngine(sgtk.platform.Engine):
 
                     # If we've already seen this file selected before, or if it's
                     # not a .nk file, then we don't need to do anything.
-                    if (
-                        file_path not in self._processed_paths
-                        and file_path.endswith(".nk")
+                    if file_path not in self._processed_paths and file_path.endswith(
+                        ".nk"
                     ):
                         self._processed_paths.append(file_path)
                         self._context_change_menu_rebuild = False
                         current_context = self.context
-                        target_context = (
-                            self._context_switcher.get_new_context(file_path)
+                        target_context = self._context_switcher.get_new_context(
+                            file_path
                         )
 
                         if target_context:
@@ -908,9 +964,7 @@ class NukeEngine(sgtk.platform.Engine):
 
                             if env_name not in self._processed_environments:
                                 self._processed_environments.append(env_name)
-                                self._context_switcher.change_context(
-                                    target_context
-                                )
+                                self._context_switcher.change_context(target_context)
         except Exception as e:
             # If anything went wrong, we can just let the finally block
             # run, which will put things back to the way they were.
@@ -958,9 +1012,7 @@ class NukeEngine(sgtk.platform.Engine):
             if new_context != self.context:
                 sgtk.platform.change_context(new_context)
         except Exception:
-            self.logger.debug(
-                "Unable to determine context for file: %s", script_path
-            )
+            self.logger.debug("Unable to determine context for file: %s", script_path)
 
     def _define_qt_base(self):
         """
@@ -1015,13 +1067,7 @@ class NukeEngine(sgtk.platform.Engine):
         )
 
         # Ensure old favorites we used to use are removed.
-        supported_entity_types = [
-            "Shot",
-            "Sequence",
-            "Scene",
-            "Asset",
-            "Project",
-        ]
+        supported_entity_types = ["Shot", "Sequence", "Scene", "Asset", "Project"]
         for x in supported_entity_types:
             nuke.removeFavoriteDir("Tank Current %s" % x)
         nuke.removeFavoriteDir("Tank Current Work")
@@ -1057,9 +1103,7 @@ class NukeEngine(sgtk.platform.Engine):
             # Remove old directory
             nuke.removeFavoriteDir(favorite["display_name"])
             try:
-                template = self.get_template_by_name(
-                    favorite["template_directory"]
-                )
+                template = self.get_template_by_name(favorite["template_directory"])
                 fields = self.context.as_template_fields(template)
                 path = template.apply_fields(fields)
             except Exception as e:

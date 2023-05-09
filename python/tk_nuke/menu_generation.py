@@ -251,16 +251,19 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
         # Register for the interesting events.
         hiero.core.events.registerInterest(
-            "kShowContextMenu/kBin", self.eventHandler,
+            "kShowContextMenu/kBin",
+            self.eventHandler,
         )
         hiero.core.events.registerInterest(
-            "kShowContextMenu/kTimeline", self.eventHandler,
+            "kShowContextMenu/kTimeline",
+            self.eventHandler,
         )
         # Note that the kViewer works differently than the other things
         # (returns a hiero.ui.Viewer object: http://docs.thefoundry.co.uk/hiero/10/hieropythondevguide/api/api_ui.html#hiero.ui.Viewer)
         # so we cannot support this easily using the same principles as for the other things.
         hiero.core.events.registerInterest(
-            "kShowContextMenu/kSpreadsheet", self.eventHandler,
+            "kShowContextMenu/kSpreadsheet",
+            self.eventHandler,
         )
         self._menu_handle.addSeparator()
 
@@ -310,16 +313,19 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
         # Register for the interesting events.
         hiero.core.events.unregisterInterest(
-            "kShowContextMenu/kBin", self.eventHandler,
+            "kShowContextMenu/kBin",
+            self.eventHandler,
         )
         hiero.core.events.unregisterInterest(
-            "kShowContextMenu/kTimeline", self.eventHandler,
+            "kShowContextMenu/kTimeline",
+            self.eventHandler,
         )
         # Note that the kViewer works differently than the other things
         # (returns a hiero.ui.Viewer object: http://docs.thefoundry.co.uk/hiero/10/hieropythondevguide/api/api_ui.html#hiero.ui.Viewer)
         # so we cannot support this easily using the same principles as for the other things.
         hiero.core.events.unregisterInterest(
-            "kShowContextMenu/kSpreadsheet", self.eventHandler,
+            "kShowContextMenu/kSpreadsheet",
+            self.eventHandler,
         )
 
     def eventHandler(self, event):
@@ -494,7 +500,9 @@ class NukeStudioMenuGenerator(HieroMenuGenerator):
 
         callback = lambda m=msg: nuke.message(m)
         cmd = HieroAppCommand(
-            self.engine, cmd_name, dict(properties=dict(), callback=callback),
+            self.engine,
+            cmd_name,
+            dict(properties=dict(), callback=callback),
         )
         cmd.add_command_to_menu(self._menu_handle, icon=self._shotgun_logo_blue)
 
@@ -612,7 +620,8 @@ class NukeMenuGenerator(BaseMenuGenerator):
             if cmd.type == "panel":
                 # First make sure the Shotgun pane menu exists.
                 pane_menu = nuke.menu("Pane").addMenu(
-                    "ShotGrid", icon=self._shotgun_logo,
+                    "ShotGrid",
+                    icon=self._shotgun_logo,
                 )
                 # Now set up the callback.
                 cmd.add_command_to_pane_menu(pane_menu)
@@ -634,7 +643,9 @@ class NukeMenuGenerator(BaseMenuGenerator):
 
         callback = lambda m=msg: nuke.message(m)
         cmd = NukeAppCommand(
-            self.engine, cmd_name, dict(properties=dict(), callback=callback),
+            self.engine,
+            cmd_name,
+            dict(properties=dict(), callback=callback),
         )
         cmd.add_command_to_menu(self._menu_handle, icon=self._shotgun_logo_blue)
 

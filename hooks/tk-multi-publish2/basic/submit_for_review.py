@@ -46,7 +46,7 @@ class NukeDeadlineSubmitForReviewPlugin(HookBaseClass):
         contain simple html for formatting.
         """
 
-        review_url = "https://support.ShotGridsoftware.com/hc/en-us/articles/114094032014-The-review-workflow"
+        review_url = "https://help.autodesk.com/view/SGSUB/ENU/?guid=SG_Supervisor_Artist_sa_review_approval_sa_review_workflow_html"
 
         return """<p>
         Submits a movie file to ShotGrid for review. An entry will be
