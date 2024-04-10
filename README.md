@@ -1,21 +1,51 @@
-[![Python 2.7 3.7](https://img.shields.io/badge/python-2.7%20%7C%203.7-blue.svg)](https://www.python.org/)
-[![Build Status](https://secure.travis-ci.org/shotgunsoftware/tk-nuke.png?branch=master)](http://travis-ci.org/shotgunsoftware/tk-nuke)
-[![Build Status](https://dev.azure.com/shotgun-ecosystem/Toolkit/_apis/build/status/Engines/tk-nuke?branchName=master)](https://dev.azure.com/shotgun-ecosystem/Toolkit/_build/latest?definitionId=83&branchName=master)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Linting](https://img.shields.io/badge/PEP8%20by-Hound%20CI-a873d1.svg)](https://houndci.com)
+[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/nfa-vfxim/tk-nuke?include_prereleases)](https://github.com/nfa-vfxim/tk-nuke) 
+[![GitHub issues](https://img.shields.io/github/issues/nfa-vfxim/tk-nuke)](https://github.com/nfa-vfxim/tk-nuke/issues) 
 
-## Documentation
-This repository is a part of the ShotGrid Pipeline Toolkit.
 
-- For more information about this app and for release notes, *see the wiki section*.
-- For general information and documentation, click here: https://developer.shotgridsoftware.com/d587be80/?title=Integrations+User+Guide
-- For information about ShotGrid in general, click here: https://www.shotgridsoftware.com/integrations
+# ShotGrid Engine for Nuke <img src="icon_256.png" alt="Icon" height="24"/>
 
-## Using this app in your Setup
-All the apps that are part of our standard app suite are pushed to our App Store.
-This is where you typically go if you want to install an app into a project you are
-working on. For an overview of all the Apps and Engines in the Toolkit App Store,
-click here: https://developer.shotgridsoftware.com/162eaa4b/?title=Pipeline+Integration+Components
+ShotGrid Integration in Nuke
 
-## Have a Question?
-Don't hesitate to contact us! You can find us on https://knowledge.autodesk.com/contact-support
+## Requirements
+
+| ShotGrid version | Core version | Engine version |
+|------------------|--------------|----------------|
+| -                | v0.19.18     | -              |
+
+## Configuration
+
+### Booleans
+
+| Name                       | Description                                                                                                                                 | Default value |
+|----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| `automatic_context_switch` | Controls whether Toolkit should attempt to automatically adjust its context every time the currently loaded file changes. Defaults to True. | True          |
+| `debug_logging`            | Controls whether debug messages should be emitted to the logger                                                                             | False         |
+| `use_sgtk_as_menu_name`    | Optionally choose to use 'Sgtk' as the primary menu name instead of 'ShotGrid'                                                              | False         |
+
+
+### Lists
+
+| Name                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Default value |
+|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| `launch_builtin_plugins`   | Comma-separated list of tk-nuke plugins to load when launching Nuke. Use of this feature disables the classic mechanism for bootstrapping Toolkit when Nuke is launched.                                                                                                                                                                                                                                                                                                                                                                        | []            |
+| `bin_context_menu`         | Controls which apps are added to the context menu for the bin view. This is a list and each item is a dictionary with keys app_instance, keep_in_menu, requires_select, and name. The app_instance parameter connects this entry to a particular app instance defined in the environment configuration file. The name is a menu name to add to the context menu. keep_in_menu is true if this item should be added to the main menu or not. requires_selection will disable the menu item when there are no items selected in the view.         | []            |
+| `timeline_context_menu`    | Controls which apps are added to the context menu for the timeilne view. This is a list and each item is a dictionary with keys app_instance, keep_in_menu, requires_select, and name. The app_instance parameter connects this entry to a particular app instance defined in the environment configuration file. The name is a menu name to add to the context menu. keep_in_menu is true if this item should be added to the main menu or not. requires_selection will disable the menu item when there are no items selected in the view.    | []            |
+| `spreadsheet_context_menu` | Controls which apps are added to the context menu for the spreadsheet view. This is a list and each item is a dictionary with keys app_instance, keep_in_menu, requires_select, and name. The app_instance parameter connects this entry to a particular app instance defined in the environment configuration file. The name is a menu name to add to the context menu. keep_in_menu is true if this item should be added to the main menu or not. requires_selection will disable the menu item when there are no items selected in the view. | []            |
+| `favourite_directories`    | Adds entries to the favourites section in the file chooser.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | []            |
+| `menu_favourites`          | Controls the favourites section on the main menu. This is a list and each menu item is a dictionary with keys app_instance and name. The app_instance parameter connects this entry to a particular app instance defined in the environment configuration file. The name is a menu name to make a favourite. An optional hotkey parameter can be included for triggering the menu action (Nuke only).                                                                                                                                           | []            |
+
+
+### Strings
+
+| Name                     | Description                                                                                                                                                                                                                                                                                                                                                   | Default value            |
+|--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|
+| `project_favourite_name` | Allows customizing the name of the favourite directory representing the current project root in the file chooser. eg. 'ShotGrid Current Project'. In multi-root configs, there will be an entry for each root eg. 'ShotGrid Current Project (secondary)'. Specifying an empty string will disable this menu from being added to the favourites automatically. | ShotGrid Current Project |
+
+
+### Integers
+
+| Name                               | Description                                                                                                                                                                                                                                                                   | Default value |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| `compatibility_dialog_min_version` | Specify the minimum Application major version that will prompt a warning if it isn't yet fully supported and tested with Toolkit.  To disable the warning dialog for the version you are testing, it is recommended that you set this value to the current major version + 1. | 10            |
+
+
