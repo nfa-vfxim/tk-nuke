@@ -13,7 +13,6 @@ This file is being imported by Nuke automatically because it is in the NUKE_PATH
 It launches the plugin's bootstrap process.
 """
 
-
 import os
 import sys
 
@@ -44,7 +43,7 @@ def plugin_startup():
 
         stack_trace = traceback.format_exc()
 
-        message = "SG Toolkit Error: %s" % (e,)
+        message = "Flow Production Tracking Error: %s" % (e,)
         details = "Error stack trace:\n\n%s" % (stack_trace)
 
         import nuke

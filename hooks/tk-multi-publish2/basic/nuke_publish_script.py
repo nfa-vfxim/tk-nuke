@@ -37,16 +37,16 @@ class NukeSessionPublishPlugin(HookBaseClass):
         contain simple html for formatting.
         """
 
-        loader_url = "https://developer.shotgridsoftware.com/a4c0a4f1/?title=Loader"
+        loader_url = "https://help.autodesk.com/view/SGDEV/ENU/?contextId=PC_APP_LOADER"
 
         return """
-        Publishes the file to ShotGrid. A <b>Publish</b> entry will be
-        created in ShotGrid which will include a reference to the file's current
-        path on disk. If a publish template is configured, a copy of the
-        current session will be copied to the publish template path which
-        will be the file that is published. Other users will be able to access
-        the published file via the <b><a href='%s'>Loader</a></b> so long as
-        they have access to the file's location on disk.
+        Publishes the file to Flow Production Tracking. A <b>Publish</b> entry
+        will be created in Flow Production Tracking which will include a reference
+        to the file's current path on disk. If a publish template is configured, a
+        copy of the current session will be copied to the publish template path
+        which will be the file that is published. Other users will be able to
+        access the published file via the <b><a href='%s'>Loader</a></b> so long
+        as they have access to the file's location on disk.
 
         If the session has not been saved, validation will fail and a button
         will be provided in the logging output to save the file.
@@ -56,7 +56,8 @@ class NukeSessionPublishPlugin(HookBaseClass):
         file to the next version after publishing.
 
         The <code>version</code> field of the resulting <b>Publish</b> in
-        ShotGrid will also reflect the version number identified in the filename.
+        Flow Production Tracking will also reflect the version number identified
+        in the filename.
         The basic worklfow recognizes the following version formats by default:
 
         <ul>
@@ -83,9 +84,7 @@ class NukeSessionPublishPlugin(HookBaseClass):
         however only the most recent publish will be available to other users.
         Warnings will be provided during validation if there are previous
         publishes.
-        """ % (
-            loader_url,
-        )
+        """ % (loader_url,)
 
     @property
     def settings(self):
@@ -108,7 +107,7 @@ class NukeSessionPublishPlugin(HookBaseClass):
         """
 
         # inherit the settings from the base publish plugin
-        base_settings = super(NukeSessionPublishPlugin, self).settings or {}
+        base_settings = super().settings or {}
 
         # settings specific to this class
         nuke_publish_settings = {
@@ -247,13 +246,13 @@ class NukeSessionPublishPlugin(HookBaseClass):
         # check to see if the next version of the work file already exists on
         # disk. if so, warn the user and provide the ability to save to the next
         # available version now
-        (next_version_path, version) = self._get_next_version_info(path, item)
+        next_version_path, version = self._get_next_version_info(path, item)
         if next_version_path and os.path.exists(next_version_path):
 
             # determine the next available version_number. just keep asking for
             # the next one until we get one that doesn't exist.
             while os.path.exists(next_version_path):
-                (next_version_path, version) = self._get_next_version_info(
+                next_version_path, version = self._get_next_version_info(
                     next_version_path, item
                 )
 
@@ -286,7 +285,7 @@ class NukeSessionPublishPlugin(HookBaseClass):
         item.properties["path"] = path
 
         # run the base class validation
-        return super(NukeSessionPublishPlugin, self).validate(settings, item)
+        return super().validate(settings, item)
 
     def publish(self, settings, item):
         """
@@ -309,12 +308,12 @@ class NukeSessionPublishPlugin(HookBaseClass):
         item.properties["path"] = path
 
         # add dependencies for the base class to register when publishing
-        item.properties[
-            "publish_dependencies"
-        ] = _nuke_find_additional_script_dependencies()
+        item.properties["publish_dependencies"] = (
+            _nuke_find_additional_script_dependencies()
+        )
 
         # let the base class register the publish
-        super(NukeSessionPublishPlugin, self).publish(settings, item)
+        super().publish(settings, item)
 
     def finalize(self, settings, item):
         """
@@ -328,7 +327,7 @@ class NukeSessionPublishPlugin(HookBaseClass):
         """
 
         # do the base class finalization
-        super(NukeSessionPublishPlugin, self).finalize(settings, item)
+        super().finalize(settings, item)
 
         # bump the session file to the next version
         self._save_to_next_version(item.properties["path"], item, _save_session)

@@ -8,12 +8,19 @@
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
-from __future__ import print_function
 import sgtk
 import nuke
+import sys
 import os
 import nukescripts
 import logging
+
+# Nuke versions compatibility constants
+VERSION_OLDEST_COMPATIBLE = (14, 0, 1)
+VERSION_OLDEST_SUPPORTED = (15, 0, 8)
+VERSION_NEWEST_SUPPORTED = (17, 0, 99)
+# Caution: make sure compatibility_dialog_min_version default value in info.yml
+# is equal to VERSION_NEWEST_SUPPORTED
 
 
 class NukeEngine(sgtk.platform.Engine):
@@ -60,7 +67,7 @@ class NukeEngine(sgtk.platform.Engine):
         module is loaded, which executes its own `bootstrap_sgtk()` function.
 
     Step 4:
-        The `bootstrap_sgtk()` function handles initializing SGTK and starting up
+        The `bootstrap_sgtk()` function handles initializing PTR and starting up
         the tk-nuke engine.
 
     .. NOTE:: There is also an addition made to the `NUKE_PATH` environment variable
@@ -81,7 +88,7 @@ class NukeEngine(sgtk.platform.Engine):
     """
 
     # Define the different areas where menu events can occur in Hiero.
-    (HIERO_BIN_AREA, HIERO_SPREADSHEET_AREA, HIERO_TIMELINE_AREA) = range(3)
+    HIERO_BIN_AREA, HIERO_SPREADSHEET_AREA, HIERO_TIMELINE_AREA = range(3)
 
     def __init__(self, *args, **kwargs):
         # For the short term, we will treat Nuke Studio as if it
@@ -97,7 +104,7 @@ class NukeEngine(sgtk.platform.Engine):
         self._processed_environments = []
         self._previous_generators = []
 
-        super(NukeEngine, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     #####################################################################################
     # Properties
@@ -156,67 +163,180 @@ class NukeEngine(sgtk.platform.Engine):
 
         tk_nuke.tank_ensure_callbacks_registered(engine=self)
 
-        # We need to check to make sure that we are using one of the
-        # supported versions of Nuke. Right now that is anything between
-        # 6.3v5 and 9.0v*. For versions higher than what we know we
-        # support we'll simply warn and continue. For older versions
-        # we will have to bail out, as we know they won't work properly.
+        # We need to check to make sure that we are using one of the supported
+        # versions of Nuke.
+        # For versions higher than what we know we support we'll simply warn and
+        # continue.
+        # For older versions we will have to bail out, as we know they won't
+        # work properly.
         nuke_version = (
             nuke.env.get("NukeVersionMajor"),
             nuke.env.get("NukeVersionMinor"),
             nuke.env.get("NukeVersionRelease"),
         )
 
-        msg = "Nuke 7.0v10 is the minimum version supported!"
-        if nuke_version[0] < 7:
-            self.logger.error(msg)
-            return
-        elif (
-            nuke_version[0] == 7
-            and nuke_version[1] == 0
-            and nuke_version[2] < 10
-        ):
-            self.logger.error(msg)
-            return
+        url_doc_supported_versions = "https://help.autodesk.com/view/SGDEV/ENU/?guid=SGD_si_integrations_engine_supported_versions_html"
 
-        # Versions > 15.0 have not yet been tested so show a message to that effect.
-        if nuke_version[0] > 15 or (nuke_version[0] == 15 and nuke_version[1] > 0):
-            # This is an untested version of Nuke.
-            msg = (
-                "The SG Pipeline Toolkit has not yet been fully tested with Nuke %d.%dv%d. "
-                "You can continue to use the Toolkit but you may experience bugs or "
-                "instability.  Please report any issues to our support team via %s"
-                % (
-                    nuke_version[0],
-                    nuke_version[1],
-                    nuke_version[2],
-                    sgtk.support_url,
+        if nuke_version < VERSION_OLDEST_COMPATIBLE:
+            # Older than the oldest compatible version
+            message = """
+Flow Production Tracking is no longer compatible with {product} versions older
+than {version}.
+
+For information regarding support engine versions, please visit this page:
+{url_doc_supported_versions}
+            """.strip()
+
+            if self.has_ui:
+                try:
+                    sgtk.platform.qt.QtGui.QMessageBox.critical(
+                        # Use QMessageBox instead of nuke.message because:
+                        # - nuke.message is not available in Hiero
+                        # - nuke.message doesn't allow to set the title
+                        # Overall, this is a better user experience
+                        None,  # parent
+                        "Error - Flow Production Tracking Compatibility!".ljust(
+                            # Padding to try to prevent the dialog being insanely narrow
+                            70
+                        ),
+                        message.replace(
+                            # Presence of \n breaks the Rich Text Format
+                            "\n",
+                            "<br>",
+                        ).format(
+                            product="Nuke",
+                            url_doc_supported_versions='<a style="color: {color}" href="{u}">{u}</a>'.format(
+                                u=url_doc_supported_versions,
+                                color=sgtk.platform.constants.SG_STYLESHEET_CONSTANTS.get(
+                                    "SG_HIGHLIGHT_COLOR",
+                                    "#18A7E3",
+                                ),
+                            ),
+                            version=self.version_str(VERSION_OLDEST_COMPATIBLE),
+                        ),
+                    )
+                except:  # nosec B110
+                    # It is unlikely that the above message will go through
+                    # on old versions of Nuke (Python2, Qt4, ...).
+                    # But there is nothing more we can do here.
+                    pass
+
+            raise sgtk.TankError(
+                message.format(
+                    product="Nuke",
+                    url_doc_supported_versions=url_doc_supported_versions,
+                    version=self.version_str(VERSION_OLDEST_COMPATIBLE),
                 )
             )
 
-            # Show nuke message if in UI mode, this is the first time the engine has been started
-            # and the warning dialog isn't overridden by the config. Note that nuke.message isn't
-            # available in Hiero, so we have to skip this there.
+        elif nuke_version < VERSION_OLDEST_SUPPORTED:
+            # Older than the oldest supported version
+            self.logger.warning(
+                "Flow Production Tracking no longer supports {product} "
+                "versions older than {version}".format(
+                    product="Nuke",
+                    version=self.version_str(VERSION_OLDEST_SUPPORTED),
+                )
+            )
+
+            if self.has_ui:
+                sgtk.platform.qt.QtGui.QMessageBox.warning(
+                    # Use QMessageBox instead of nuke.message because:
+                    # - nuke.message is not available in Hiero
+                    # - nuke.message doesn't allow to set the title
+                    # Overall, this is a better user experience
+                    None,  # parent
+                    "Warning - Flow Production Tracking Compatibility!".ljust(
+                        # Padding to try to prevent the dialog being insanely narrow
+                        70
+                    ),
+                    """
+Flow Production Tracking no longer supports {product} versions older than
+{version}.
+You can continue to use Toolkit but you may experience bugs or instabilities.
+
+For information regarding support engine versions, please visit this page:
+{url_doc_supported_versions}
+                    """.strip()
+                    .replace(
+                        # Presence of \n breaks the Rich Text Format
+                        "\n",
+                        "<br>",
+                    )
+                    .format(
+                        product="Nuke",
+                        url_doc_supported_versions='<a style="color: {color}" href="{u}">{u}</a>'.format(
+                            u=url_doc_supported_versions,
+                            color=sgtk.platform.constants.SG_STYLESHEET_CONSTANTS.get(
+                                "SG_HIGHLIGHT_COLOR",
+                                "#18A7E3",
+                            ),
+                        ),
+                        version=self.version_str(VERSION_OLDEST_SUPPORTED),
+                    ),
+                )
+
+        elif nuke_version <= VERSION_NEWEST_SUPPORTED:
+            # Within the range of supported versions
+            self.logger.debug(f"Running Nuke version {self.version_str(nuke_version)}")
+
+        else:  # Newer than the newest supported version (untested)
+            self.logger.warning(
+                "Flow Production Tracking has not yet been fully tested with "
+                "{product} version {version}.".format(
+                    product="Nuke",
+                    version=self.version_str(nuke_version),
+                )
+            )
+
             if (
                 self.has_ui
                 and "TANK_NUKE_ENGINE_INIT_NAME" not in os.environ
                 and nuke_version[0]
-                >= self.get_setting("compatibility_dialog_min_version", 11)
-                and not self.hiero_enabled
+                >= self.get_setting("compatibility_dialog_min_version")
             ):
-                nuke.message("Warning - SG Pipeline Toolkit!\n\n%s" % msg)
+                sgtk.platform.qt.QtGui.QMessageBox.warning(
+                    # Use QMessageBox instead of nuke.message because:
+                    # - nuke.message is not available in Hiero
+                    # - nuke.message doesn't allow to set the title
+                    # Overall, this is a better user experience
+                    None,  # parent
+                    "Warning - Flow Production Tracking Compatibility!".ljust(
+                        # Padding to try to prevent the dialog being insanely narrow
+                        70
+                    ),
+                    """
+Flow Production Tracking has not yet been fully tested with {product} version
+{version}.
+You can continue to use Toolkit but you may experience bugs or instabilities.
 
-            # Log the warning.
-            self.logger.warning(msg)
+Please report any issues to:
+{support_url}
+                    """.strip()
+                    .replace(
+                        # Presence of \n breaks the Rich Text Format
+                        "\n",
+                        "<br>",
+                    )
+                    .format(
+                        product="Nuke",
+                        support_url='<a style="color: {color}" href="{u}">{u}</a>'.format(
+                            u=sgtk.support_url,
+                            color=sgtk.platform.constants.SG_STYLESHEET_CONSTANTS.get(
+                                "SG_HIGHLIGHT_COLOR",
+                                "#18A7E3",
+                            ),
+                        ),
+                        version=self.version_str(nuke_version),
+                    ),
+                )
 
         # Make sure we are not running Nuke PLE or Non-Commercial!
         if nuke.env.get("ple"):
             self.logger.error("The Nuke Engine does not work with Nuke PLE!")
             return
         elif nuke.env.get("nc"):
-            self.logger.error(
-                "The Nuke Engine does not work with Nuke Non-Commercial!"
-            )
+            self.logger.error("The Nuke Engine does not work with Nuke Non-Commercial!")
             return
 
         # Now check that we are at least in a project context. Note that plugin mode
@@ -228,6 +348,11 @@ class NukeEngine(sgtk.platform.Engine):
                 "in the context in order to start! Your "
                 "context: %s" % self.context
             )
+
+        # Figure out what our menu will be named.
+        self._menu_name = "Flow Production Tracking"
+        if self.get_setting("use_short_menu_name", False):
+            self._menu_name = "FPTR"
 
         # Do our mode-specific initializations.
         if self.hiero_enabled:
@@ -261,112 +386,29 @@ class NukeEngine(sgtk.platform.Engine):
         os.environ["TANK_ENGINE"] = self.instance_name
         os.environ["TANK_CONTEXT"] = sgtk.context.serialize(self.context)
 
-        """
-        https://jira.autodesk.com/browse/SG-25374
-        Weblogin does not show up in Nuke 11 and makes Nuke 12 and 13 to crash
-
-        To avoid Nuke crash, a monkeypatch of on_dialog_closed is required,
-        here the user is warned about restarted nuke is needed to continue.
-        """
-        sgtk.authentication.sso_saml2.core.sso_saml2_core.SsoSaml2Core.on_dialog_closed = (
-            self._on_dialog_closed_monkeypatch
-        )
-
-    @staticmethod
-    def _on_dialog_closed_monkeypatch(self, result):
-        """
-        Called whenever the dialog is dismissed.
-
-        This can be the result of a callback, a timeout or user interaction.
-
-        :param result: Qt result following the closing of the dialog.
-                       QtGui.QDialog.Accepted or QtGui.QDialog.Rejected
-        """
-        self._logger.debug("SSO dialog closed")
-        # pylint: disable=invalid-name
-        QtGui = self._QtGui  # noqa
-
-        if self.is_handling_event():
-            if result == QtGui.QDialog.Rejected and self._session.cookies != "":
-                # We got here because of a timeout attempting a GUI-less login.
-                # Let's clear the cookies, and force the use of the GUI.
-                self._session.cookies = ""
-                # Let's have another go, without any cookies this time !
-                # This will force the GUI to be shown to the user.
-                self._logger.debug(
-                    "Unable to login/renew claims automatically, presenting GUI "
-                    "to user"
-                )
-                """
-                https://jira.autodesk.com/browse/SG-25374
-                Weblogin does not show up in Nuke 11 and makes Nuke 12 and
-                13 to crash
-                """
-                base_dir = os.path.dirname(os.path.abspath(__file__))
-
-                msgbox_icon = os.path.join(base_dir, "resources", "alert_icon.png")
-                msgbox_parent = self._dialog
-                msgbox_title = "Nuke"
-                msgbox_text = [
-                    "The ShotGrid user session has expired.",
-                    "To continue using ShotGrid in Nuke, please restart Nuke.",
-                ]
-                msgbox_buttons = self._QtGui.QMessageBox.Ok
-
-                msgbox = self._QtGui.QMessageBox(msgbox_parent)
-                msgbox.setWindowTitle(msgbox_title)
-                msgbox.setText("\n\n".join(msgbox_text))
-                msgbox.setStandardButtons(msgbox_buttons)
-                msgbox.setIconPixmap(self._QtGui.QPixmap(msgbox_icon))
-                msgbox.activateWindow()  # for Windows
-                msgbox.raise_()  # for MacOS
-                msgbox.exec_()
-
-                status = QtGui.QDialog.Rejected
-                self._logger.warn("Skipping web login dialog for Nuke DCC.")
-                self._login_status = self._login_status or status
-            else:
-                self.resolve_event()
-        else:
-            # Should we get a rejected dialog, then we have had a timeout.
-            if result == QtGui.QDialog.Rejected:
-                # @FIXME: Figure out exactly what to do when we have a timeout.
-                self._logger.warn(
-                    "Our QDialog got canceled outside of an event handling"
-                )
-
-        # Clear the web page
-        self._view.page().mainFrame().load("about:blank")
-
     def post_app_init(self):
         """
         Called when all apps have initialized.
         """
-        # Figure out what our menu will be named.
-        menu_name = "NFA ShotGrid"
-        if self.get_setting("use_sgtk_as_menu_name", False):
-            menu_name = "Sgtk"
 
         # We have some mode-specific initialization to do.
         if self.hiero_enabled:
-            self.post_app_init_hiero(menu_name)
+            self.post_app_init_hiero()
         elif self.studio_enabled:
-            self.post_app_init_studio(menu_name)
+            self.post_app_init_studio()
 
             # We want to run the Nuke init, as well, to load up
             # any gizmos, but we don't want it to be part of the
             # post_app_init_studio method, since we'll also need
             # to call just the gizmo stuff on context changes and
             # not the other Nuke Studio-related init stuff.
-            self.post_app_init_nuke(menu_name)
+            self.post_app_init_nuke()
         else:
-            self.post_app_init_nuke(menu_name)
+            self.post_app_init_nuke()
 
-    def post_app_init_studio(self, menu_name="ShotGrid"):
+    def post_app_init_studio(self):
         """
         The Nuke Studio specific portion of the engine's post-init process.
-
-        :param menu_name:   The label/name of the menu to be created.
         """
         if self.has_ui:
             # Note! not using the import as this confuses Nuke's callback system
@@ -377,7 +419,7 @@ class NukeEngine(sgtk.platform.Engine):
 
             # Create the menu!
             self._menu_generator = tk_nuke.NukeStudioMenuGenerator(
-                self, menu_name
+                self, self._menu_name
             )
             self._menu_generator.create_menu()
 
@@ -411,11 +453,9 @@ class NukeEngine(sgtk.platform.Engine):
         """
         pass
 
-    def post_app_init_hiero(self, menu_name="ShotGrid"):
+    def post_app_init_hiero(self):
         """
         The Hiero-specific portion of the engine's post-init process.
-
-        :param menu_name:   The label/name of the menu to be created.
         """
         if self.has_ui:
             # Note! not using the import as this confuses Nuke's callback system
@@ -425,7 +465,7 @@ class NukeEngine(sgtk.platform.Engine):
             from hiero.core import env as hiero_env
 
             # Create the menu!
-            self._menu_generator = tk_nuke.HieroMenuGenerator(self, menu_name)
+            self._menu_generator = tk_nuke.HieroMenuGenerator(self, self._menu_name)
             self._menu_generator.create_menu()
 
             hiero.core.events.registerInterest(
@@ -438,11 +478,9 @@ class NukeEngine(sgtk.platform.Engine):
                 self._on_project_load_callback,
             )
 
-    def post_app_init_nuke(self, menu_name="NFA ShotGrid"):
+    def post_app_init_nuke(self):
         """
         The Nuke-specific portion of the engine's post-init process.
-
-        :param menu_name:   The label/name of the menu to be created.
         """
 
         if self.has_ui and not self.studio_enabled:
@@ -456,7 +494,7 @@ class NukeEngine(sgtk.platform.Engine):
             # existed. This is to prevent a crash on close in Nuke 11 that occurs
             # after a context change is triggered.
             self._previous_generators.append(self._menu_generator)
-            self._menu_generator = tk_nuke.NukeMenuGenerator(self, menu_name)
+            self._menu_generator = tk_nuke.NukeMenuGenerator(self, self._menu_name)
             self._menu_generator.create_menu()
 
             # Initialize favourite dirs in the file open/file save dialogs
@@ -469,7 +507,7 @@ class NukeEngine(sgtk.platform.Engine):
             # part of saved layouts, nuke will look through
             # a global list of registered panels, try to locate
             # the one it needs and then run the callback.
-            for (panel_id, panel_dict) in self.panels.items():
+            for panel_id, panel_dict in self.panels.items():
                 nukescripts.panels.registerPanel(
                     panel_id,
                     panel_dict["callback"],
@@ -550,7 +588,7 @@ class NukeEngine(sgtk.platform.Engine):
     def _run_commands_at_startup(self):
         # Build a dictionary mapping app instance names to dictionaries of commands they registered with the engine.
         app_instance_commands = {}
-        for (command_name, value) in self.commands.items():
+        for command_name, value in self.commands.items():
             app_instance = value["properties"].get("app")
             if app_instance:
                 # Add entry 'command name: command function' to the command dictionary of this app instance.
@@ -562,7 +600,6 @@ class NukeEngine(sgtk.platform.Engine):
         commands_to_run = []
         # Run the series of app instance commands listed in the 'run_at_startup' setting.
         for app_setting_dict in self.get_setting("run_at_startup", []):
-
             app_instance_name = app_setting_dict["app_instance"]
             # Menu name of the command to run or '' to run all commands of the given app instance.
             setting_command_name = app_setting_dict["name"]
@@ -579,7 +616,7 @@ class NukeEngine(sgtk.platform.Engine):
             else:
                 if not setting_command_name:
                     # Run all commands of the given app instance.
-                    for (command_name, command_function) in command_dict.items():
+                    for command_name, command_function in command_dict.items():
                         self.logger.debug(
                             "%s startup running app '%s' command '%s'.",
                             self.name,
@@ -709,6 +746,8 @@ class NukeEngine(sgtk.platform.Engine):
         if self.hiero_enabled:
             import hiero
 
+            existing_log_level = hiero.core.log.logLevel()
+
             if record.levelno >= logging.ERROR:
                 hiero.core.log.error(msg)
             elif record.levelno >= logging.WARNING:
@@ -718,13 +757,14 @@ class NukeEngine(sgtk.platform.Engine):
             else:
                 hiero.core.log.setLogLevel(hiero.core.log.kDebug)
                 hiero.core.log.debug(msg)
+                hiero.core.log.setLogLevel(existing_log_level)
         else:
             if record.levelno >= logging.CRITICAL:
-                nuke.critical("SG Critical: %s" % msg)
+                nuke.critical("PTR Critical: %s" % msg)
             elif record.levelno >= logging.ERROR:
-                nuke.error("SG Error: %s" % msg)
+                nuke.error("PTR Error: %s" % msg)
             elif record.levelno >= logging.WARNING:
-                nuke.warning("SG Warning: %s" % msg)
+                nuke.warning("PTR Warning: %s" % msg)
 
         # Sends the message to the script editor.
         self.async_execute_in_main_thread(print, msg)
@@ -861,6 +901,10 @@ class NukeEngine(sgtk.platform.Engine):
     #####################################################################################
     # General Utilities
 
+    @classmethod
+    def version_str(cls, version_tuple):
+        return "{}.{}v{}".format(*version_tuple)
+
     def set_project_root(self, event):
         """
         Ensure any new projects get the project root or default startup
@@ -873,30 +917,19 @@ class NukeEngine(sgtk.platform.Engine):
         import hiero
 
         for p in hiero.core.projects():
-
             # In Nuke 11 and greater the Project.projectRoot and Project.setProjectRoot methods
             # have been deprecated in favour of Project.exportRootDirectory and
             # Project.setProjectDirectory.
-            if (
-                nuke.env.get("NukeVersionMajor") >= 11
-                and not p.exportRootDirectory()
-            ):
-                # Fix for Windows backslashes
-                projectPath = self.sgtk.project_path
-                projectPath = projectPath.replace("\\", "/")
+            if nuke.env.get("NukeVersionMajor") >= 11 and not p.exportRootDirectory():
                 self.logger.debug(
                     "Setting exportRootDirectory on %s to: %s",
                     p.name(),
-                    projectPath,
-                )
-                p.setProjectDirectory(projectPath)
-            elif (
-                nuke.env.get("NukeVersionMajor") <= 10 and not p.projectRoot()
-            ):
-                self.logger.debug(
-                    "Setting projectRoot on %s to: %s",
-                    p.name(),
                     self.sgtk.project_path,
+                )
+                p.setProjectDirectory(self.sgtk.project_path)
+            elif nuke.env.get("NukeVersionMajor") <= 10 and not p.projectRoot():
+                self.logger.debug(
+                    "Setting projectRoot on %s to: %s", p.name(), self.sgtk.project_path
                 )
                 p.setProjectRoot(self.sgtk.project_path)
 
@@ -911,7 +944,7 @@ class NukeEngine(sgtk.platform.Engine):
         # currently disabled.
         if nuke.env.get("NukeVersionMajor") == 7:
             return None
-        return super(NukeEngine, self)._get_dialog_parent()
+        return super()._get_dialog_parent()
 
     def _handle_studio_selection_change(self, event):
         """
@@ -981,7 +1014,7 @@ class NukeEngine(sgtk.platform.Engine):
     def _on_project_load_callback(self, event):
         """
         Callback executed after project load in Hiero and Nuke Studio. This
-        triggers an attempt to change the SGTK context to that of the newly
+        triggers an attempt to change the PTR context to that of the newly
         opened project file.
 
         :param event:   The event object from Hiero/NS.
@@ -1048,7 +1081,7 @@ class NukeEngine(sgtk.platform.Engine):
             )
             os.environ["SHOTGUN_SKIP_QTWEBENGINEWIDGETS_IMPORT"] = "1"
 
-        return super(NukeEngine, self)._define_qt_base()
+        return super()._define_qt_base()
 
     def __setup_favorite_dirs(self):
         """
@@ -1061,9 +1094,7 @@ class NukeEngine(sgtk.platform.Engine):
         """
         engine_root_dir = self.disk_location
         sg_logo = os.path.abspath(
-            os.path.join(
-                engine_root_dir, "resources", "filmacademy_sg_logo_80px.png"
-            )
+            os.path.join(engine_root_dir, "resources", "sg_logo_80px.png")
         )
 
         # Ensure old favorites we used to use are removed.
@@ -1071,8 +1102,8 @@ class NukeEngine(sgtk.platform.Engine):
         for x in supported_entity_types:
             nuke.removeFavoriteDir("Tank Current %s" % x)
         nuke.removeFavoriteDir("Tank Current Work")
-        nuke.removeFavoriteDir("SG Current Project")
-        nuke.removeFavoriteDir("SG Current Work")
+        nuke.removeFavoriteDir("PTR Current Project")
+        nuke.removeFavoriteDir("PTR Current Work")
 
         # Add favorties for current project root(s).
         proj = self.context.project

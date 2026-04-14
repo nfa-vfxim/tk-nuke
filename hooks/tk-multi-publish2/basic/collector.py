@@ -48,7 +48,7 @@ class NukeSessionCollector(HookBaseClass):
         """
 
         # grab any base class settings
-        collector_settings = super(NukeSessionCollector, self).settings or {}
+        collector_settings = super().settings or {}
 
         # settings specific to this collector
         nuke_session_settings = {
@@ -93,9 +93,7 @@ class NukeSessionCollector(HookBaseClass):
         else:
             # running nuke. ensure additional collected outputs are parented
             # under the session
-            project_item = self.collect_current_nuke_session(
-                settings, parent_item
-            )
+            project_item = self.collect_current_nuke_session(settings, parent_item)
 
         # run node collection if not in hiero
         if hasattr(engine, "hiero_enabled") and not engine.hiero_enabled:
@@ -129,9 +127,7 @@ class NukeSessionCollector(HookBaseClass):
         )
 
         # get the icon path to display for this item
-        icon_path = os.path.join(
-            self.disk_location, os.pardir, "icons", "nuke.png"
-        )
+        icon_path = os.path.join(self.disk_location, os.pardir, "icons", "nuke.png")
         session_item.set_icon_from_path(icon_path)
 
         # if a work template is defined, add it to the item properties so
@@ -178,7 +174,7 @@ class NukeSessionCollector(HookBaseClass):
         else:
             active_project = None
 
-        # attempt to retrieve a configured work template. we can attach
+        # attempt to retrive a configured work template. we can attach
         # it to the collected project items
         work_template_setting = settings.get("Work Template")
         work_template = None
@@ -198,9 +194,7 @@ class NukeSessionCollector(HookBaseClass):
             if not active_project:
                 return
             project_item = parent_item.create_item(
-                "nukestudio.project",
-                "NukeStudio Project",
-                active_project.name(),
+                "nukestudio.project", "NukeStudio Project", active_project.name()
             )
             self.logger.info(
                 "Collected Nuke Studio project: %s" % (active_project.name(),)
@@ -208,9 +202,7 @@ class NukeSessionCollector(HookBaseClass):
             project_item.set_icon_from_path(icon_path)
             project_item.properties["project"] = active_project
             project_item.properties["work_template"] = work_template
-            self.logger.debug(
-                "Work template defined for NukeStudio collection."
-            )
+            self.logger.debug("Work template defined for NukeStudio collection.")
             return
         # FIXME: end temporary workaround
 
@@ -226,9 +218,7 @@ class NukeSessionCollector(HookBaseClass):
             # plugins know which open project to associate with this item
             project_item.properties["project"] = project
 
-            self.logger.info(
-                "Collected Nuke Studio project: %s" % (project.name(),)
-            )
+            self.logger.info("Collected Nuke Studio project: %s" % (project.name(),))
 
             # enable the active project and expand it. other projects are
             # collapsed and disabled.
@@ -248,9 +238,7 @@ class NukeSessionCollector(HookBaseClass):
             # execution time.
             if work_template:
                 project_item.properties["work_template"] = work_template
-                self.logger.debug(
-                    "Work template defined for NukeStudio collection."
-                )
+                self.logger.debug("Work template defined for NukeStudio collection.")
 
     def collect_node_outputs(self, parent_item):
         """
@@ -264,9 +252,7 @@ class NukeSessionCollector(HookBaseClass):
         for node_type in _NUKE_OUTPUTS:
 
             # get all the instances of the node type
-            all_nodes_of_type = [
-                n for n in nuke.allNodes() if n.Class() == node_type
-            ]
+            all_nodes_of_type = [n for n in nuke.allNodes() if n.Class() == node_type]
 
             # iterate over each instance
             for node in all_nodes_of_type:
@@ -281,12 +267,10 @@ class NukeSessionCollector(HookBaseClass):
                     # no file or file does not exist, nothing to do
                     continue
 
-                self.logger.info(
-                    "Processing %s node: %s" % (node_type, node.name())
-                )
+                self.logger.info("Processing %s node: %s" % (node_type, node.name()))
 
                 # file exists, let the basic collector handle it
-                item = super(NukeSessionCollector, self)._collect_file(
+                item = super()._collect_file(
                     parent_item, file_path, frame_sequence=True
                 )
 
@@ -316,98 +300,94 @@ class NukeSessionCollector(HookBaseClass):
         first_frame = int(nuke.root()["first_frame"].value())
         last_frame = int(nuke.root()["last_frame"].value())
 
-        for node in sg_writenode_app.get_all_write_nodes():
-            node = nuke.toNode(node)
-            render_path = node["file"].value()
+        for node in sg_writenode_app.get_write_nodes():
 
-            if render_path:
-                is_published = sg_writenode_app.get_published_status(node)
-                if not is_published:
-                    item_info = super(
-                        NukeSessionCollector, self
-                    )._get_item_info(render_path)
+            # see if any frames have been rendered for this write node
+            rendered_files = sg_writenode_app.get_node_render_files(node)
+            if not rendered_files:
+                continue
 
-                    item_type = "%s.sequence" % (item_info["item_type"],)
-                    type_display = "%s Sequence" % (item_info["type_display"],)
+            # some files rendered, use first frame to get some publish item info
+            path = rendered_files[0]
+            item_info = super()._get_item_info(path)
 
-                    # construct publish name:
-                    render_template = (
-                        sg_writenode_app.get_node_render_template(node)
-                    )
-                    render_path_fields = render_template.get_fields(
-                        render_path
-                    )
+            # item_info will be for the single file. we'll update the type and
+            # display to represent a sequence. This is the same pattern used by
+            # the base collector for image sequences. We're not using the base
+            # collector to create the publish item though since we already have
+            # the sequence path, template knowledge provided by the
+            # tk-nuke-writenode app. The base collector makes some "zero config"
+            # assupmtions about the path that we don't need to make here.
+            item_type = "%s.sequence" % (item_info["item_type"],)
+            type_display = "%s Sequence" % (item_info["type_display"],)
 
-                    output_name = render_path_fields.get("output")
+            # we'll publish the path with the frame/eye spec (%V, %04d)
+            publish_path = sg_writenode_app.get_node_render_path(node)
 
-                    render_directory = os.path.dirname(render_path)
-                    image_sequences = publisher.util.get_frame_sequences(
-                        render_directory
-                    )
-                    for image_sequence in image_sequences:
-                        if (
-                            image_sequence[0].replace(os.sep, "/")
-                            == render_path
-                        ):
+            # construct publish name:
+            render_template = sg_writenode_app.get_node_render_template(node)
+            render_path_fields = render_template.get_fields(publish_path)
 
-                            sequence_files = []
-                            for file in image_sequence[1]:
-                                file = file.replace(os.sep, "/")
-                                sequence_files.append(file)
+            rp_name = render_path_fields.get("name")
+            rp_channel = render_path_fields.get("channel")
+            if not rp_name and not rp_channel:
+                publish_name = "Publish"
+            elif not rp_name:
+                publish_name = "Channel %s" % rp_channel
+            elif not rp_channel:
+                publish_name = rp_name
+            else:
+                publish_name = "%s, Channel %s" % (rp_name, rp_channel)
 
-                            # get the version number from the render path
-                            version_number = render_path_fields.get("version")
+            # get the version number from the render path
+            version_number = render_path_fields.get("version")
 
-                            # use the path basename and nuke writenode name for display
-                            display_name = "%s (%s)" % (
-                                output_name,
-                                node.name(),
-                            )
+            # use the path basename and nuke writenode name for display
+            _, filename = os.path.split(publish_path)
+            display_name = "%s (%s)" % (publish_name, node.name())
 
-                            # Set publish name
-                            publish_name = publisher.util.get_publish_name(
-                                render_path
-                            )
+            # create and populate the item
+            item = parent_item.create_item(item_type, type_display, display_name)
+            item.set_icon_from_path(item_info["icon_path"])
 
-                            # create and populate the item
-                            item = parent_item.create_item(
-                                item_type, type_display, display_name
-                            )
-                            item.set_icon_from_path(item_info["icon_path"])
+            # if the supplied path is an image, use the path as # the thumbnail.
+            item.set_thumbnail_from_path(path)
 
-                            # if the supplied path is an image, use the path as # the thumbnail.
-                            item.set_thumbnail_from_path(render_path)
+            # disable thumbnail creation since we get it for free
+            item.thumbnail_enabled = False
 
-                            # disable thumbnail creation since we get it for free
-                            item.thumbnail_enabled = False
+            # all we know about the file is its path. set the path in its
+            # properties for the plugins to use for processing.
+            item.properties["path"] = publish_path
 
-                            item.properties["path"] = render_path
-                            item.properties["sequence_paths"] = sequence_files
-                            item.properties["publish_name"] = publish_name
-                            item.properties["publish_version"] = version_number
-                            item.properties[
-                                "publish_template"
-                            ] = sg_writenode_app.get_node_publish_template(
-                                node
-                            )
-                            item.properties[
-                                "work_template"
-                            ] = sg_writenode_app.get_node_render_template(node)
-                            item.properties[
-                                "colorspace"
-                            ] = sg_writenode_app.get_colorspace(node)
-                            item.properties["first_frame"] = first_frame
-                            item.properties["last_frame"] = last_frame
-                            item.properties["sg_writenode"] = node
+            # include an indicator that this is an image sequence and the known
+            # file that belongs to this sequence
+            item.properties["sequence_paths"] = rendered_files
 
-                            # we have a publish template so disable context change. This
-                            # is a temporary measure until the publisher handles context
-                            # switching natively.
-                            item.context_change_allowed = False
+            # store publish info on the item so that the base publish plugin
+            # doesn't fall back to zero config path parsing
+            item.properties["publish_name"] = publish_name
+            item.properties["publish_version"] = version_number
+            item.properties["publish_template"] = (
+                sg_writenode_app.get_node_publish_template(node)
+            )
+            item.properties["work_template"] = (
+                sg_writenode_app.get_node_render_template(node)
+            )
+            item.properties["color_space"] = self._get_node_colorspace(node)
+            item.properties["first_frame"] = first_frame
+            item.properties["last_frame"] = last_frame
 
-                            self.logger.info(
-                                "Collected file: %s" % (render_path,)
-                            )
+            # store the nuke writenode on the item as well. this can be used by
+            # secondary publish plugins
+            item.properties["sg_writenode"] = node
+
+            # we have a publish template so disable context change. This
+            # is a temporary measure until the publisher handles context
+            # switching natively.
+            item.context_change_allowed = False
+
+            self.logger.info("Collected file: %s" % (publish_path,))
 
     def _get_node_colorspace(self, node):
         """
