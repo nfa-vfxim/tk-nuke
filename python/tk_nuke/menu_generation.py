@@ -40,18 +40,10 @@ class BaseMenuGenerator(object):
 
         engine_root_dir = self.engine.disk_location
         self._shotgun_logo = os.path.abspath(
-            os.path.join(
-                engine_root_dir,
-                "resources",
-                "sg_logo_80px.png",
-            ),
+            os.path.join(engine_root_dir, "resources", "filmacademy_sg_logo_80px.png",),
         )
         self._shotgun_logo_blue = os.path.abspath(
-            os.path.join(
-                engine_root_dir,
-                "resources",
-                "sg_logo_blue_32px.png",
-            ),
+            os.path.join(engine_root_dir, "resources", "filmacademy_logo_32px.png",),
         )
 
     @property
@@ -190,7 +182,8 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
         from sgtk.platform.qt import QtGui
 
-        self._menu_handle = QtGui.QMenu("Flow Production Tracking")
+        # Adding menu name
+        self._menu_handle = QtGui.QMenu(self._menu_name)
         help = hiero.ui.findMenuAction("Cache")
         menuBar = hiero.ui.menuBar()
         menuBar.insertMenu(help, self._menu_handle)
@@ -592,13 +585,22 @@ class NukeMenuGenerator(BaseMenuGenerator):
             if cmd.type == "node":
                 # Get icon if specified - default to sgtk icon if not specified.
                 icon = cmd.properties.get("icon", self._shotgun_logo)
+
+                # Get hotkey if specified
+                hotkey = cmd.properties.get("hotkey")
+
+                # Fix for Windows slashes
+                icon = icon.replace(os.sep, '/')
                 command_context = cmd.properties.get("context")
 
                 # If the app recorded a context that it wants the command to be associated
                 # with, we need to check it against the current engine context. If they
                 # don't match then we don't add it.
                 if command_context is None or command_context is self.engine.context:
-                    node_menu_handle.addCommand(cmd.name, cmd.callback, icon=icon)
+                    if hotkey:
+                        node_menu_handle.addCommand(cmd.name, cmd.callback, hotkey, icon=icon)
+                    else:
+                        node_menu_handle.addCommand(cmd.name, cmd.callback, icon=icon)
             elif cmd.type == "context_menu":
                 cmd.add_command_to_menu(self._context_menu)
             else:

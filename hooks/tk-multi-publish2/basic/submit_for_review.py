@@ -28,14 +28,16 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         """
 
         # look for icon one level up from this hook's folder in "icons" folder
-        return os.path.join(self.disk_location, os.pardir, "icons", "review.png")
+        return os.path.join(
+            self.disk_location, os.pardir, "icons", "review.png"
+        )
 
     @property
     def name(self):
         """
         One line display name describing the plugin
         """
-        return "Submit for Review"
+        return "Submit for Review on Deadline"
 
     @property
     def description(self):
@@ -47,11 +49,13 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         review_url = "https://help.autodesk.com/view/SGSUB/ENU/?guid=SG_Supervisor_Artist_sa_review_approval_sa_review_workflow_html"
 
         return """<p>
-        Submits a movie file to Flow Production Tracking for review. An entry will be
-        created in Flow Production Tracking which will include a reference to the movie file's
-        current path on disk. Other users will be able to access the file via
-        the <b><a href='%s'>review app</a></b> on the Flow Production Tracking website.</p>
-        """ % (review_url)
+        Submits a movie file to ShotGrid for review. An entry will be
+        created in ShotGrid which will include a reference to the movie file's current
+        path on disk. Other users will be able to access the file via
+        the <b><a href='%s'>review app</a></b> on the ShotGrid website.</p>
+        """ % (
+            review_url
+        )
 
     @property
     def settings(self):
@@ -120,37 +124,37 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         """
 
         accepted = True
-        review_submission_app = self.parent.engine.apps.get("tk-multi-reviewsubmission")
+        review_submission_app = self.parent.engine.apps.get(
+            "tk-multi-deadlinereviewsubmission"
+        )
         if review_submission_app is None:
             accepted = False
             self.logger.debug(
                 "Review submission app is not available. skipping item: %s"
                 % (item.properties["publish_name"],)
             )
-        if item.properties.get("color_space") is None:
-            accepted = False
-            self.logger.debug(
-                "'color_space' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
-            )
         if item.properties.get("first_frame") is None:
             accepted = False
             self.logger.debug(
                 "'first_frame' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
+                "Item will be skipped: %s."
+                % (item.properties["publish_name"],)
             )
         if item.properties.get("last_frame") is None:
             accepted = False
             self.logger.debug(
                 "'last_frame' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
+                "Item will be skipped: %s."
+                % (item.properties["publish_name"],)
             )
         path = item.properties.get("path")
+
         if path is None:
             accepted = False
             self.logger.debug(
                 "'path' property is not defined on the item. "
-                "Item will be skipped: %s." % (item.properties["publish_name"],)
+                "Item will be skipped: %s."
+                % (item.properties["publish_name"],)
             )
 
         if accepted:
@@ -159,7 +163,24 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
                 "Submit for review plugin accepted: %s" % (path,),
                 extra={"action_show_folder": {"path": path}},
             )
-        return {"accepted": accepted, "checked": True}
+
+        # Determine if item should be checked or not
+        output_template = item.properties.get("work_template")
+        output_fields = output_template.get_fields(path)
+
+        render_name = output_fields.get("output")
+
+        checked_filenames = ("main",)
+
+        if render_name in checked_filenames:
+            checked = True
+            accepted = True
+
+        else:
+            checked = False
+            accepted = False
+
+        return {"accepted": accepted, "checked": checked}
 
     def validate(self, settings, item):
         """
@@ -204,17 +225,18 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         render_path = item.properties.get("path")
 
         sg_publish_data = item.properties.get("sg_publish_data")
+        print(sg_publish_data)
         if sg_publish_data is None:
             raise Exception(
                 "'sg_publish_data' was not found in the item's properties. "
                 "Review Submission for '%s' failed. This property must "
-                "be set by a publish plugin that has run before this one." % render_path
+                "be set by a publish plugin that has run before this one."
+                % render_path
             )
-        sg_task = self.parent.context.task
-        comment = item.description
-        thumbnail_path = item.get_thumbnail_as_path()
-        progress_cb = lambda *args, **kwargs: None
-        review_submission_app = self.parent.engine.apps.get("tk-multi-reviewsubmission")
+
+        tk_multi_deadlinereviewsubmission = self.parent.engine.apps.get(
+            "tk-multi-deadlinereviewsubmission"
+        )
 
         render_template = item.properties.get("work_template")
         if render_template is None:
@@ -226,7 +248,7 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
         if publish_template is None:
             raise Exception(
                 "'publish_template' property not found on item. "
-                "Review submission for '%' failed." % render_path
+                "Review submission for '%s' failed." % render_path
             )
         if not render_template.validate(render_path):
             raise Exception(
@@ -235,29 +257,30 @@ class NukeSubmitForReviewPlugin(HookBaseClass):
             )
 
         render_path_fields = render_template.get_fields(render_path)
+
         first_frame = item.properties.get("first_frame")
         last_frame = item.properties.get("last_frame")
-        colorspace = item.properties.get("color_space")
+        fps = nuke.root().fps()
 
-        version = review_submission_app.render_and_submit_version(
-            publish_template,
-            render_path_fields,
-            first_frame,
-            last_frame,
-            [sg_publish_data],
-            sg_task,
-            comment,
-            thumbnail_path,
-            progress_cb,
-            colorspace,
+        colorspace = item.properties.get("colorspace")
+
+        version = tk_multi_deadlinereviewsubmission.submit_version(
+            template=publish_template,
+            fields=render_path_fields,
+            publish=sg_publish_data,
+            first_frame=first_frame,
+            last_frame=last_frame,
+            fps=fps,
+            colorspace_idt=colorspace,
         )
+
         if version:
             self.logger.info(
                 "Version uploaded for file: %s" % (render_path,),
                 extra={
                     "action_show_in_shotgun": {
                         "label": "Show Version",
-                        "tooltip": "Reveal the version in Flow Production Tracking.",
+                        "tooltip": "Reveal the version in ShotGrid.",
                         "entity": version,
                     }
                 },
