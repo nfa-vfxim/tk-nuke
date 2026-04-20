@@ -16,7 +16,6 @@ import nuke
 import os
 import unicodedata
 import traceback
-from tank_vendor import six
 import nukescripts.openurl
 import nukescripts
 
@@ -41,10 +40,18 @@ class BaseMenuGenerator(object):
 
         engine_root_dir = self.engine.disk_location
         self._shotgun_logo = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "filmacademy_sg_logo_80px.png",),
+            os.path.join(
+                engine_root_dir,
+                "resources",
+                "sg_logo_80px.png",
+            ),
         )
         self._shotgun_logo_blue = os.path.abspath(
-            os.path.join(engine_root_dir, "resources", "filmacademy_logo_32px.png",),
+            os.path.join(
+                engine_root_dir,
+                "resources",
+                "sg_logo_blue_32px.png",
+            ),
         )
 
     @property
@@ -65,9 +72,9 @@ class BaseMenuGenerator(object):
         """
         Creates an "error" menu item.
         """
-        (exc_type, exc_value, exc_traceback) = sys.exc_info()
+        exc_type, exc_value, exc_traceback = sys.exc_info()
         msg = (
-            "Message: SG encountered a problem starting the Engine.\n"
+            "Message: PTR encountered a problem starting the Engine.\n"
             "Exception: %s - %s\n"
             "Traceback (most recent call last): %s"
             % (exc_type, exc_value, "\n".join(traceback.format_tb(exc_traceback)))
@@ -83,8 +90,8 @@ class BaseMenuGenerator(object):
                         disabled.
         """
         msg = (
-            "SG integration is currently disabled because the file you "
-            "have opened is not recognized. SG cannot "
+            "PTR integration is currently disabled because the file you "
+            "have opened is not recognized. PTR cannot "
             "determine which Context the currently-open file belongs to. "
             "In order to enable Toolkit integration, try opening another "
             "file. <br><br><i>Details:</i> %s" % details
@@ -160,13 +167,13 @@ class HieroMenuGenerator(BaseMenuGenerator):
         :type engine: :class:`sgtk.platform.Engine`
         :param menu_name: The name of the menu to be created.
         """
-        super(HieroMenuGenerator, self).__init__(engine, menu_name)
+        super().__init__(engine, menu_name)
         self._menu_handle = None
         self._context_menus_to_apps = dict()
 
     def _create_hiero_menu(self, add_commands=True, commands=None):
         """
-        Creates the "ShotGrid" menu in Hiero.
+        Creates the "Flow Production Tracking" menu in Hiero.
 
         :param bool add_commands: If True, menu commands will be added to the
             newly-created menu. If False, the menu will be created, but no
@@ -183,8 +190,7 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
         from sgtk.platform.qt import QtGui
 
-        # Adding menu name
-        self._menu_handle = QtGui.QMenu(self._menu_name)
+        self._menu_handle = QtGui.QMenu("Flow Production Tracking")
         help = hiero.ui.findMenuAction("Cache")
         menuBar = hiero.ui.menuBar()
         menuBar.insertMenu(help, self._menu_handle)
@@ -205,7 +211,7 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
         # Now enumerate all items and create menu objects for them.
         menu_items = []
-        for (cmd_name, cmd_details) in commands.items():
+        for cmd_name, cmd_details in commands.items():
             menu_items.append(HieroAppCommand(self.engine, cmd_name, cmd_details))
 
         # Now add favourites.
@@ -228,13 +234,13 @@ class HieroMenuGenerator(BaseMenuGenerator):
         }
 
         remove = set()
-        for (key, apps) in self._context_menus_to_apps.items():
+        for key, apps in self._context_menus_to_apps.items():
             items = self.engine.get_setting(key)
             for item in items:
                 app_instance_name = item["app_instance"]
                 menu_name = item["name"]
                 # Scan through all menu items.
-                for (i, cmd) in enumerate(menu_items):
+                for i, cmd in enumerate(menu_items):
                     if (
                         cmd.app_instance_name == app_instance_name
                         and cmd.name == menu_name
@@ -289,7 +295,7 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
     def create_menu(self, add_commands=True):
         """
-        Creates the "ShotGrid" menu in Hiero.
+        Creates the "Flow Production Tracking" menu in Hiero.
 
         :param add_commands:    If True, menu commands will be added to
                                 the newly-created menu. If False, the menu
@@ -302,7 +308,7 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
     def destroy_menu(self):
         """
-        Destroys the "ShotGrid" menu.
+        Destroys the "Flow Production Tracking" menu.
         """
         import hiero
 
@@ -331,7 +337,7 @@ class HieroMenuGenerator(BaseMenuGenerator):
     def eventHandler(self, event):
         """
         The engine's Hiero-specific event handler. This is called by Hiero when
-        events are triggered, which then handles running SGTK-specific event
+        events are triggered, which then handles running PTR-specific event
         behaviors.
 
         :param event:   The Hiero event object that was triggered.
@@ -347,7 +353,7 @@ class HieroMenuGenerator(BaseMenuGenerator):
             return
 
         event.menu.addSeparator()
-        menu = event.menu.addAction("ShotGrid")
+        menu = event.menu.addAction("Flow Production Tracking")
         menu.setEnabled(False)
 
         for cmd in cmds:
@@ -386,7 +392,7 @@ class HieroMenuGenerator(BaseMenuGenerator):
 
         # create the menu object
         ctx_menu = self._menu_handle.addMenu(ctx_name)
-        action = ctx_menu.addAction("Jump to ShotGrid")
+        action = ctx_menu.addAction("Jump to Flow Production Tracking")
         action.triggered.connect(self._jump_to_sg)
 
         if ctx.filesystem_locations:
@@ -472,12 +478,11 @@ class NukeStudioMenuGenerator(HieroMenuGenerator):
         if not add_commands:
             return
 
-        for (cmd_name, cmd_details) in node_commands.items():
+        for cmd_name, cmd_details in node_commands.items():
             cmd = NukeAppCommand(self.engine, cmd_name, cmd_details)
 
             # Get icon if specified - default to sgtk icon if not specified.
             icon = cmd.properties.get("icon", self._shotgun_logo)
-            icon = icon.replace(os.sep, '/')
             command_context = cmd.properties.get("context")
 
             # If the app recorded a context that it wants the command to be associated
@@ -523,12 +528,12 @@ class NukeMenuGenerator(BaseMenuGenerator):
         :type engine: :class:`sgtk.platform.Engine`
         :param menu_name: The name of the menu to be created.
         """
-        super(NukeMenuGenerator, self).__init__(engine, menu_name)
+        super().__init__(engine, menu_name)
         self._dialogs = []
 
     def create_menu(self, add_commands=True):
         """
-        Creates the "ShotGrid" menu in Nuke.
+        Creates the "Flow Production Tracking" menu in Nuke.
 
         :param add_commands:    If True, menu commands will be added to
                                 the newly-created menu. If False, the menu
@@ -558,7 +563,7 @@ class NukeMenuGenerator(BaseMenuGenerator):
 
         # Now enumerate all items and create menu objects for them.
         menu_items = []
-        for (cmd_name, cmd_details) in self.engine.commands.items():
+        for cmd_name, cmd_details in self.engine.commands.items():
             menu_items.append(NukeAppCommand(self.engine, cmd_name, cmd_details))
 
         # Sort the list of commands in name order.
@@ -587,22 +592,13 @@ class NukeMenuGenerator(BaseMenuGenerator):
             if cmd.type == "node":
                 # Get icon if specified - default to sgtk icon if not specified.
                 icon = cmd.properties.get("icon", self._shotgun_logo)
-
-                # Get hotkey if specified
-                hotkey = cmd.properties.get("hotkey")
-
-                # Fix for Windows slashes
-                icon = icon.replace(os.sep, '/')
                 command_context = cmd.properties.get("context")
 
                 # If the app recorded a context that it wants the command to be associated
                 # with, we need to check it against the current engine context. If they
                 # don't match then we don't add it.
                 if command_context is None or command_context is self.engine.context:
-                    if hotkey:
-                        node_menu_handle.addCommand(cmd.name, cmd.callback, hotkey, icon=icon)
-                    else:
-                        node_menu_handle.addCommand(cmd.name, cmd.callback, icon=icon)
+                    node_menu_handle.addCommand(cmd.name, cmd.callback, icon=icon)
             elif cmd.type == "context_menu":
                 cmd.add_command_to_menu(self._context_menu)
             else:
@@ -620,7 +616,7 @@ class NukeMenuGenerator(BaseMenuGenerator):
             if cmd.type == "panel":
                 # First make sure the Shotgun pane menu exists.
                 pane_menu = nuke.menu("Pane").addMenu(
-                    "ShotGrid",
+                    "Flow Production Tracking",
                     icon=self._shotgun_logo,
                 )
                 # Now set up the callback.
@@ -684,7 +680,7 @@ class NukeMenuGenerator(BaseMenuGenerator):
 
         # Create the menu object.
         ctx_menu = menu_handle.addMenu(ctx_name, icon=self._shotgun_logo_blue)
-        ctx_menu.addCommand("Jump to ShotGrid", self._jump_to_sg)
+        ctx_menu.addCommand("Jump to Flow Production Tracking", self._jump_to_sg)
         if ctx.filesystem_locations:
             ctx_menu.addCommand("Jump to File System", self._jump_to_fs)
         ctx_menu.addSeparator()
@@ -753,7 +749,7 @@ class BaseAppCommand(object):
             self._app_name = None
         self._app_instance_name = None
         if self._app:
-            for (app_instance_name, app_instance_obj) in engine.apps.items():
+            for app_instance_name, app_instance_obj in engine.apps.items():
                 if self._app and self._app == app_instance_obj:
                     self._app_instance_name = app_instance_name
 
@@ -827,9 +823,12 @@ class BaseAppCommand(object):
         if self.app:
             doc_url = self.app.documentation_url
             # Deal with nuke's inability to handle unicode.
-            if type(doc_url) == six.text_type:
-                doc_url = six.ensure_str(
-                    unicodedata.normalize("NFKD", doc_url), "ascii", "ignore"
+            if type(doc_url) == str:
+                doc_url = unicodedata.normalize("NFKD", doc_url)
+                doc_url = (
+                    doc_url.decode("ascii", "ignore")
+                    if isinstance(doc_url, bytes)
+                    else str(doc_url)
                 )
             return doc_url
         return None
@@ -847,14 +846,14 @@ class HieroAppCommand(BaseAppCommand):
         """
         Initializes a new AppCommand object.
 
-        :param engine:  The SGTK engine controlling the session.
+        :param engine:  The PTR engine controlling the session.
         :param name:    The name of the command.
         :command_dict:  A dict containing the information necessary to
                         register a command with Hiero's menu manager. This
                         includes a properties dict as well as a callback
                         in the form of a callable object.
         """
-        super(HieroAppCommand, self).__init__(engine, name, command_dict)
+        super().__init__(engine, name, command_dict)
         self._requires_selection = False
         self._sender = None
         self._event_type = None
@@ -907,7 +906,6 @@ class HieroAppCommand(BaseAppCommand):
                         command.
         """
         icon = icon or self.properties.get("icon")
-        icon = icon.replace(os.sep, '/')
         action = menu.addAction(self.name)
         action.setEnabled(enabled)
         if icon:
@@ -974,7 +972,7 @@ class NukeAppCommand(BaseAppCommand):
     """
 
     def __init__(self, *args, **kwargs):
-        super(NukeAppCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._original_callback = self._callback
         self.callback = self._non_pane_menu_callback_wrapper
 
@@ -1012,8 +1010,6 @@ class NukeAppCommand(BaseAppCommand):
         :param menu: The menu object to add the new item to.
         """
         icon = self.properties.get("icon")
-        # Fix for Windows slashes
-        icon = icon.replace(os.sep, '/')
         menu.addCommand(self.name, self._original_callback, icon=icon)
 
     def add_command_to_menu(self, menu, enabled=True, icon=None, hotkey=None):
@@ -1027,8 +1023,6 @@ class NukeAppCommand(BaseAppCommand):
                         for the menu command.
         """
         icon = icon or self.properties.get("icon")
-        # Fix for Windows slashes
-        icon = icon.replace(os.sep, '/')
         hotkey = hotkey or self.properties.get("hotkey")
 
         # Now wrap the command callback in a wrapper (see above)

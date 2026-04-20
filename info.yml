@@ -19,6 +19,12 @@ configuration:
                      context every time the currently loaded file changes. Defaults to True."
         default_value: True
 
+    allow_keep_context_from_project:
+        type: bool
+        description: "Controls whether Toolkit should try to keep project context when it
+                     fails to switch context automatically based on file location. Defaults to False."
+        default_value: False
+
     launch_builtin_plugins:
         type: list
         description: Comma-separated list of tk-nuke plugins to load when launching Nuke. Use
@@ -112,11 +118,12 @@ configuration:
     project_favourite_name:
         type: str
         description: "Allows customizing the name of the favourite directory representing
-                     the current project root in the file chooser. eg. 'ShotGrid Current Project'.
-                     In multi-root configs, there will be an entry for each root eg. 'ShotGrid
-                     Current Project (secondary)'. Specifying an empty string will disable this
-                     menu from being added to the favourites automatically."
-        default_value: "ShotGrid Current Project"
+                     the current project root in the file chooser. eg. 'Flow Production Tracking
+                     Current Project'. In multi-root configs, there will be an entry for each root
+                     eg. 'Flow Production Tracking Current Project (secondary)'. Specifying an
+                     empty string will disable this menu from being added to the favourites
+                     automatically."
+        default_value: "Flow Production Tracking Current Project"
 
     debug_logging:
         type: bool
@@ -139,9 +146,9 @@ configuration:
                 name: { type: str }
                 app_instance: { type: str }
 
-    use_sgtk_as_menu_name:
+    use_short_menu_name:
         type: bool
-        description: Optionally choose to use 'Sgtk' as the primary menu name instead of 'ShotGrid'
+        description: Optionally choose to use "FPTR" as the primary menu name instead of "Flow Production Tracking"
         default_value: false
 
     compatibility_dialog_min_version:
@@ -150,16 +157,16 @@ configuration:
                         it isn't yet fully supported and tested with Toolkit.  To disable the warning
                         dialog for the version you are testing, it is recommended that you set this
                         value to the current major version + 1."
-        default_value:  10
+        default_value:  17
 
 # the Shotgun fields that this engine needs in order to operate correctly
 requires_shotgun_fields:
 
 
 # More verbose description of this item
-display_name: "ShotGrid Engine for Nuke"
-description: "ShotGrid Integration in Nuke"
+display_name: "Flow Production Tracking Engine for Nuke"
+description: "Flow Production Tracking Integration in Nuke"
 
 # Required minimum versions for this item to run
 requires_shotgun_version:
-requires_core_version: "v0.19.18"
+requires_core_version: "v0.22.6"

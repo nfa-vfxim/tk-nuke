@@ -8,7 +8,6 @@
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
-from __future__ import print_function
 import os
 import sys
 import time
@@ -74,7 +73,7 @@ def bootstrap(plugin_root_path):
 
         # open the yaml file and read the data
         with open(plugin_info_yml, "r") as plugin_info_fh:
-            plugin_info = yaml.load(plugin_info_fh)
+            plugin_info = yaml.load(plugin_info_fh, Loader=yaml.FullLoader)
 
         base_config = plugin_info["base_configuration"]
         plugin_id = plugin_info["plugin_id"]
@@ -116,8 +115,8 @@ def __launch_sgtk(base_config, plugin_id, bundle_cache):
         # credentials.
         user = sgtk.authentication.ShotgunAuthenticator().get_user()
     except sgtk.authentication.AuthenticationCancelled:
-        # TODO: show a "SG > Login" menu in nuke
-        sgtk_logger.info("SG login was cancelled by the user.")
+        # TODO: show a "PTR > Login" menu in nuke
+        sgtk_logger.info("PTR login was cancelled by the user.")
         return
 
     # Create a boostrap manager for the logged in user with the plug-in
