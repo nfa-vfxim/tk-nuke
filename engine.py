@@ -17,7 +17,7 @@ import logging
 
 # Nuke versions compatibility constants
 VERSION_OLDEST_COMPATIBLE = (14, 0, 1)
-VERSION_OLDEST_SUPPORTED = (15, 0, 8)
+VERSION_OLDEST_SUPPORTED = (15, 0, 1)
 VERSION_NEWEST_SUPPORTED = (17, 0, 99)
 # Caution: make sure compatibility_dialog_min_version default value in info.yml
 # is equal to VERSION_NEWEST_SUPPORTED
