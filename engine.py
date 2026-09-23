@@ -916,17 +916,27 @@ Please report any issues to:
         """
         import hiero
 
+        # Hiero (at least Nuke 17) processes backslash escapes in the project
+        # directory, so a UNC path like \\server\4ejaar\projects turns into
+        # "\\server\x04ejaarprojects". Forward slashes survive and work on Windows.
+        project_path = self.sgtk.project_path.replace("\\", "/")
+
         for p in hiero.core.projects():
             # In Nuke 11 and greater the Project.projectRoot and Project.setProjectRoot methods
             # have been deprecated in favour of Project.exportRootDirectory and
             # Project.setProjectDirectory.
-            if nuke.env.get("NukeVersionMajor") >= 11 and not p.exportRootDirectory():
+            if nuke.env.get("NukeVersionMajor") >= 11:
+                root = p.exportRootDirectory()
+                # Also repair roots that were mangled by the escaping bug above
+                if root and os.path.isdir(root):
+                    continue
                 self.logger.debug(
-                    "Setting exportRootDirectory on %s to: %s",
+                    "Setting exportRootDirectory on %s to: %s (was %r)",
                     p.name(),
-                    self.sgtk.project_path,
+                    project_path,
+                    root,
                 )
-                p.setProjectDirectory(self.sgtk.project_path)
+                p.setProjectDirectory(project_path)
             elif nuke.env.get("NukeVersionMajor") <= 10 and not p.projectRoot():
                 self.logger.debug(
                     "Setting projectRoot on %s to: %s", p.name(), self.sgtk.project_path
@@ -1020,6 +1030,14 @@ Please report any issues to:
         :param event:   The event object from Hiero/NS.
         """
         import hiero.core
+
+        # Also repair the export root of projects that are opened, not only of
+        # new ones: existing projects may carry a root that was mangled by
+        # Hiero's backslash-escaping (see set_project_root).
+        try:
+            self.set_project_root(event)
+        except Exception:
+            self.logger.debug("Unable to set project root on load", exc_info=True)
 
         project = hiero.core.projects()[-1]
         script_path = project.path()
