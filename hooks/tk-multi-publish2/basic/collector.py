@@ -318,96 +318,141 @@ class NukeSessionCollector(HookBaseClass):
 
         for node in sg_writenode_app.get_all_write_nodes():
             node = nuke.toNode(node)
-            render_path = node["file"].value()
 
-            if render_path:
+            try:
+                result = self._find_sg_writenode_render(
+                    publisher, sg_writenode_app, node
+                )
+            except Exception as e:
+                # never let one node stop the other nodes from being collected
+                self.logger.warning(
+                    "Could not collect renders for %s: %s" % (node.name(), e)
+                )
+                continue
+
+            if not result:
+                continue
+
+            render_path, sequence_files = result
+
+            item_info = super(NukeSessionCollector, self)._get_item_info(
+                render_path
+            )
+
+            item_type = "%s.sequence" % (item_info["item_type"],)
+            type_display = "%s Sequence" % (item_info["type_display"],)
+
+            # construct publish name:
+            render_template = sg_writenode_app.get_node_render_template(node)
+            render_path_fields = render_template.get_fields(render_path)
+
+            output_name = render_path_fields.get("output")
+
+            # get the version number from the render path
+            version_number = render_path_fields.get("version")
+
+            # use the path basename and nuke writenode name for display
+            display_name = "%s (%s)" % (
+                output_name,
+                node.name(),
+            )
+
+            # Set publish name
+            publish_name = publisher.util.get_publish_name(render_path)
+
+            # create and populate the item
+            item = parent_item.create_item(item_type, type_display, display_name)
+            item.set_icon_from_path(item_info["icon_path"])
+
+            # if the supplied path is an image, use the path as # the thumbnail.
+            item.set_thumbnail_from_path(render_path)
+
+            # disable thumbnail creation since we get it for free
+            item.thumbnail_enabled = False
+
+            item.properties["path"] = render_path
+            item.properties["sequence_paths"] = sequence_files
+            item.properties["publish_name"] = publish_name
+            item.properties["publish_version"] = version_number
+            item.properties[
+                "publish_template"
+            ] = sg_writenode_app.get_node_publish_template(node)
+            item.properties[
+                "work_template"
+            ] = sg_writenode_app.get_node_render_template(node)
+            item.properties["colorspace"] = sg_writenode_app.get_colorspace(node)
+            item.properties["first_frame"] = first_frame
+            item.properties["last_frame"] = last_frame
+            item.properties["sg_writenode"] = node
+
+            # we have a publish template so disable context change. This
+            # is a temporary measure until the publisher handles context
+            # switching natively.
+            item.context_change_allowed = False
+
+            self.logger.info("Collected file: %s" % (render_path,))
+
+    def _find_sg_writenode_render(self, publisher, sg_writenode_app, node):
+        """
+        Find the rendered, unpublished frame sequence of a sg write node.
+
+        The path that was rendered the last time is tried first: after a
+        farm submission the script is versioned up and the file path of the
+        node already points to the next version.
+
+        :param publisher: The publisher app
+        :param sg_writenode_app: The tk-nuke-writenode app
+        :param node: The sg write node
+        :returns: Tuple of (render path, list of frame files) or None
+        """
+        candidates = []
+
+        # older tk-nuke-writenode versions don't store the rendered path
+        if hasattr(sg_writenode_app, "get_last_rendered_path"):
+            last_rendered_path = sg_writenode_app.get_last_rendered_path(node)
+            if last_rendered_path:
+                candidates.append(last_rendered_path)
+
+        current_path = node["file"].value()
+        if current_path and current_path not in candidates:
+            candidates.append(current_path)
+
+        for render_path in candidates:
+            render_path = render_path.replace(os.sep, "/")
+            render_directory = os.path.dirname(render_path)
+
+            # nothing rendered for this version (yet)
+            if not os.path.isdir(render_directory):
+                continue
+
+            sequence_files = None
+            for sequence_path, files in publisher.util.get_frame_sequences(
+                render_directory
+            ):
+                if _same_path(sequence_path, render_path):
+                    sequence_files = [f.replace(os.sep, "/") for f in files]
+                    break
+
+            if not sequence_files:
+                continue
+
+            if hasattr(sg_writenode_app, "get_path_published_status"):
+                is_published = sg_writenode_app.get_path_published_status(
+                    render_path
+                )
+            else:
                 is_published = sg_writenode_app.get_published_status(node)
-                if not is_published:
-                    item_info = super(
-                        NukeSessionCollector, self
-                    )._get_item_info(render_path)
 
-                    item_type = "%s.sequence" % (item_info["item_type"],)
-                    type_display = "%s Sequence" % (item_info["type_display"],)
+            if is_published:
+                self.logger.debug(
+                    "Already published, skipping: %s" % (render_path,)
+                )
+                # the newest render is published, don't collect older ones
+                return None
 
-                    # construct publish name:
-                    render_template = (
-                        sg_writenode_app.get_node_render_template(node)
-                    )
-                    render_path_fields = render_template.get_fields(
-                        render_path
-                    )
+            return render_path, sequence_files
 
-                    output_name = render_path_fields.get("output")
-
-                    render_directory = os.path.dirname(render_path)
-                    image_sequences = publisher.util.get_frame_sequences(
-                        render_directory
-                    )
-                    for image_sequence in image_sequences:
-                        if (
-                            image_sequence[0].replace(os.sep, "/")
-                            == render_path
-                        ):
-
-                            sequence_files = []
-                            for file in image_sequence[1]:
-                                file = file.replace(os.sep, "/")
-                                sequence_files.append(file)
-
-                            # get the version number from the render path
-                            version_number = render_path_fields.get("version")
-
-                            # use the path basename and nuke writenode name for display
-                            display_name = "%s (%s)" % (
-                                output_name,
-                                node.name(),
-                            )
-
-                            # Set publish name
-                            publish_name = publisher.util.get_publish_name(
-                                render_path
-                            )
-
-                            # create and populate the item
-                            item = parent_item.create_item(
-                                item_type, type_display, display_name
-                            )
-                            item.set_icon_from_path(item_info["icon_path"])
-
-                            # if the supplied path is an image, use the path as # the thumbnail.
-                            item.set_thumbnail_from_path(render_path)
-
-                            # disable thumbnail creation since we get it for free
-                            item.thumbnail_enabled = False
-
-                            item.properties["path"] = render_path
-                            item.properties["sequence_paths"] = sequence_files
-                            item.properties["publish_name"] = publish_name
-                            item.properties["publish_version"] = version_number
-                            item.properties[
-                                "publish_template"
-                            ] = sg_writenode_app.get_node_publish_template(
-                                node
-                            )
-                            item.properties[
-                                "work_template"
-                            ] = sg_writenode_app.get_node_render_template(node)
-                            item.properties[
-                                "colorspace"
-                            ] = sg_writenode_app.get_colorspace(node)
-                            item.properties["first_frame"] = first_frame
-                            item.properties["last_frame"] = last_frame
-                            item.properties["sg_writenode"] = node
-
-                            # we have a publish template so disable context change. This
-                            # is a temporary measure until the publisher handles context
-                            # switching natively.
-                            item.context_change_allowed = False
-
-                            self.logger.info(
-                                "Collected file: %s" % (render_path,)
-                            )
+        return None
 
     def _get_node_colorspace(self, node):
         """
@@ -434,3 +479,12 @@ def _session_path():
     """
     root_name = nuke.root().name()
     return None if root_name == "Root" else root_name
+
+
+def _same_path(path_a, path_b):
+    """
+    Compare two paths, ignoring slash direction and (on Windows) case.
+    """
+    return os.path.normcase(os.path.normpath(path_a)) == os.path.normcase(
+        os.path.normpath(path_b)
+    )
